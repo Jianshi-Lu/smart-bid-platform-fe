@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import CreateInvitationForm from '@/components/CreateInvitationForm.vue'
 </script>
 
 <template>
-  <HelloWorld />
+  <CreateInvitationForm />
 </template>

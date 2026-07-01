@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "axios": "^1.18.1",
     "vue": "^3.5.39"
   },
   "devDependencies": {
@@ -18,5 +19,8 @@
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vue-tsc": "^3.3.5"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true
   }
 }
