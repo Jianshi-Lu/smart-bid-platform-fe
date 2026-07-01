@@ -18,6 +18,7 @@ coverage/
 *.bak
 *.tmp
 *.orig
+*.iml
 
 # Editor directories and files
 .vscode/*
