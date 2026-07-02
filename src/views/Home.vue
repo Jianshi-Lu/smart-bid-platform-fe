@@ -7,12 +7,17 @@
  *   2. el-row 响应式列数(:xs/:sm/:md/:lg),1/2/3/4 列自动 reflow
  *   3. 卡片整体可点击跳转,鼠标 hover 抬升阴影
  *
- * 未来加新模块的姿势(在 entries 数组追加):
- *   { module: '投标记录', title: '...', description: '...', path: '/bid/list', icon: List }
- *   { module: '经办人',   title: '...', description: '...', path: '/handler/list', icon: User }
+ * 当前 6 entries,按 3 模块 × 2 动作(列表 + 创建)展开:
+ *   - 招标公告:列表 + 创建
+ *   - 招标经办人:列表 + 创建
+ *   - 投标记录:列表 + 创建
+ *
+ * 未来加新模块的姿势(在 entries 数组追加 2 个对象):
+ *   { title: '...', description: '...', path: '/xxx/list', icon: ... }
+ *   { title: '...', description: '...', path: '/xxx/create', icon: ... }
  */
 import type { Component } from 'vue'
-import { Document, Plus } from '@element-plus/icons-vue'
+import { Document, List, Plus, User, UserFilled } from '@element-plus/icons-vue'
 
 interface HomeEntry {
     /** 卡片主标题 */
@@ -29,18 +34,39 @@ const entries: HomeEntry[] = [
     {
         title: '公告列表',
         description: '查看所有招标公告,支持分页查询与状态过滤',
-        path: '/list',
+        path: '/invitation/list',
         icon: Document,
     },
     {
         title: '创建公告',
         description: '新建一条招标公告,填写 18 个业务字段',
-        path: '/create',
+        path: '/invitation/create',
         icon: Plus,
     },
-    // ——— 未来模块占位 ———
-    // { module: '投标记录', title: '投标列表', description: '...', path: '/bid/list', icon: List },
-    // { module: '经办人',   title: '经办人管理', description: '...', path: '/handler/list', icon: User },
+    {
+        title: '经办人列表',
+        description: '查看所有招标经办人',
+        path: '/bid-handler-info/list',
+        icon: User,
+    },
+    {
+        title: '新建经办人',
+        description: '创建一条招标经办人记录',
+        path: '/bid-handler-info/create',
+        icon: UserFilled,
+    },
+    {
+        title: '投标列表',
+        description: '查看所有投标记录',
+        path: '/bid-record/list',
+        icon: List,
+    },
+    {
+        title: '新建投标',
+        description: '为某条招标公告创建一条投标记录',
+        path: '/bid-record/create',
+        icon: Plus,
+    },
 ]
 </script>
 
