@@ -1,25 +1,24 @@
 <script setup lang="ts">
 /**
- * 创建招标公告表单。
+ * 创建招标公告表单(Element Plus 版)。
  *
- * 数据流转链条:
- *   View -> v-model -> reactive(form) -> createInvitationForBid(form)
- *        -> http.post(JSON.stringify) -> HTTP -> BE
- *        -> resp.data(JSON.parse) -> created.value / successMsg -> View
+ * 数据流转:
+ *   el-form v-model -> form.* -> submit() -> createInvitationForBid(form)
+ *        -> http.post -> BE -> resp.data.data
+ *        -> ElMessage.success + created.value -> el-card 展示 JSON
  *
- * 关键约定:
- *   - 业务成功判定已下沉到 src/api/http.ts 拦截器,组件不再判 code
- *   - 必填字段 (bidHandlerId / projectNo / purchaseTaskNo) 由 BE @NotNull/@NotBlank 校验
- *   - 错误统一由拦截器包装为 ApiError 抛出,组件用 instanceof ApiError 区分
+ * 错误: 拦截器包装 ApiError, ElMessage.error。
+ * 校验: 全部交给 BE (@NotNull/@NotBlank), FE 不重复。
  */
 import { reactive, ref } from 'vue'
-import { createInvitationForBid } from '@/modules/invitation-for-bid/api'
+import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
+import { createInvitationForBid } from '@/modules/invitation-for-bid/api'
 import type { AddRequest, InvitationForBid } from '@/modules/invitation-for-bid/types'
 
-// 整个表单状态:reactive 把对象包成 Proxy,字段改 Vue 自动通知 v-model 更新
+// el-input-number 对 0 展示"空",所以用 null 占位,提交时 ?? 0 兜底
 const form = reactive<AddRequest>({
-  bidHandlerId: 0,
+  bidHandlerId: null as unknown as number,
   projectNo: '',
   purchaseTaskNo: '',
   platformCategory: '',
@@ -36,30 +35,27 @@ const form = reactive<AddRequest>({
   purchaseCompany: '',
   purchaseDepartment: '',
   tenderingParty: '',
-  notes: ''
+  notes: '',
 })
 
-// 状态锁:防止用户连点提交导致重复请求,绑定到按钮 :disabled
 const submitting = ref(false)
-const successMsg = ref('')
-const errorMsg = ref('')
 const created = ref<InvitationForBid | null>(null)
 
 async function onSubmit() {
   submitting.value = true
-  successMsg.value = ''
-  errorMsg.value = ''
   created.value = null
   try {
-    const entity = await createInvitationForBid(form)
+    const entity = await createInvitationForBid({
+      ...form,
+      bidHandlerId: form.bidHandlerId ?? 0,
+    })
     created.value = entity
-    successMsg.value = `创建成功, ID=${entity.invitationId}, 状态=${entity.status}`
+    ElMessage.success(`创建成功 ID=${entity.invitationId} 状态=${entity.status}`)
   } catch (e) {
-    if (e instanceof ApiError) {
-      errorMsg.value = `[${e.code}] ${e.message}`
-    } else {
-      errorMsg.value = `请求失败: ${(e as Error)?.message ?? String(e)}`
-    }
+    const msg = e instanceof ApiError
+        ? `[${e.code}] ${e.message}`
+        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    ElMessage.error(msg)
   } finally {
     submitting.value = false
   }
@@ -67,131 +63,111 @@ async function onSubmit() {
 </script>
 
 <template>
-  <form @submit.prevent="onSubmit" style="max-width: 720px; padding: 16px;">
-    <!-- .prevent 阻止表单默认提交导致的整页刷新,这是 SPA 的致命操作 -->
+  <div style="max-width: 800px; padding: 16px;">
     <h2>创建招标公告</h2>
 
-    <fieldset style="margin-bottom: 16px;">
-      <legend>基本信息</legend>
+    <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
+      <el-divider content-position="left">基本信息</el-divider>
 
-      <div style="margin-bottom: 8px;">
-        <label>经办人 ID *:&nbsp;</label>
-        <!-- .number 把 input 字符串转 number,否则 axios 发出的 JSON 里 bidHandlerId 是 "123" 而非 123,BE 反序列化会失败 -->
-        <input v-model.number="form.bidHandlerId" type="number" required />
-      </div>
+            <el-form-item label="经办人 ID" required>
+                <!-- :min="1" 排除 0/负数:BE @NotNull 校验要求 > 0 -->
+                <el-input-number v-model="form.bidHandlerId" :min="1" />
+            </el-form-item>
+      <el-form-item label="项目编号" required>
+        <el-input v-model="form.projectNo" maxlength="50" show-word-limit />
+      </el-form-item>
+      <el-form-item label="采购任务编号" required>
+        <el-input v-model="form.purchaseTaskNo" maxlength="50" show-word-limit />
+      </el-form-item>
 
-      <div style="margin-bottom: 8px;">
-        <label>项目编号 *:&nbsp;</label>
-        <input v-model="form.projectNo" type="text" required maxlength="50" />
-      </div>
+      <el-divider content-position="left">流程信息</el-divider>
 
-      <div style="margin-bottom: 8px;">
-        <label>采购任务编号 *:&nbsp;</label>
-        <input v-model="form.purchaseTaskNo" type="text" required maxlength="50" />
-      </div>
-    </fieldset>
+      <el-form-item label="平台采购类别">
+        <el-input v-model="form.platformCategory" maxlength="50" />
+      </el-form-item>
+      <el-form-item label="招标流程">
+        <el-input v-model="form.tenderProcess" maxlength="50" />
+      </el-form-item>
+      <el-form-item label="招标方式">
+        <el-input v-model="form.tenderMethod" maxlength="50" />
+      </el-form-item>
+      <el-form-item label="采购方式">
+        <el-input v-model="form.purchaseMethod" maxlength="50" />
+      </el-form-item>
 
-    <fieldset style="margin-bottom: 16px;">
-      <legend>流程信息</legend>
+      <el-divider content-position="left">费用与规则</el-divider>
 
-      <div style="margin-bottom: 8px;">
-        <label>平台采购类别:&nbsp;</label>
-        <input v-model="form.platformCategory" type="text" maxlength="50" />
-      </div>
+      <el-form-item label="是否固定价">
+        <el-switch v-model="form.isFixedPrice" />
+      </el-form-item>
+      <el-form-item label="是否有文件费">
+        <el-switch v-model="form.hasDocumentFee" />
+      </el-form-item>
+      <el-form-item label="保证金">
+        <el-input-number v-model="form.deposit" :min="0" :precision="2" :step="0.01" />
+      </el-form-item>
+      <el-form-item label="需要资信报告">
+        <el-switch v-model="form.creditReportRequired" />
+      </el-form-item>
 
-      <div style="margin-bottom: 8px;">
-        <label>招标流程:&nbsp;</label>
-        <input v-model="form.tenderProcess" type="text" maxlength="50" />
-      </div>
+      <el-divider content-position="left">时间节点</el-divider>
 
-      <div style="margin-bottom: 8px;">
-        <label>招标方式:&nbsp;</label>
-        <input v-model="form.tenderMethod" type="text" maxlength="50" />
-      </div>
+            <el-form-item label="报名截止">
+                <!-- value-format="YYYY-MM-DDTHH:mm:ss" 匹配 BE ISO-8601(去掉 T 和时区) -->
+                <el-date-picker
+                    v-model="form.registrationDeadline"
+                    type="datetime"
+                    value-format="YYYY-MM-DDTHH:mm:ss"
+                    placeholder="选择日期时间"
+                />
+            </el-form-item>
+      <el-form-item label="技术投标截止">
+        <el-date-picker
+            v-model="form.technicalTenderDeadline"
+            type="datetime"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            placeholder="选择日期时间"
+        />
+      </el-form-item>
+      <el-form-item label="商务投标截止">
+        <el-date-picker
+            v-model="form.businessTenderDeadline"
+            type="datetime"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            placeholder="选择日期时间"
+        />
+      </el-form-item>
 
-      <div style="margin-bottom: 8px;">
-        <label>采购方式:&nbsp;</label>
-        <input v-model="form.purchaseMethod" type="text" maxlength="50" />
-      </div>
-    </fieldset>
+      <el-divider content-position="left">采购方信息</el-divider>
 
-    <fieldset style="margin-bottom: 16px;">
-      <legend>费用与规则</legend>
+      <el-form-item label="采购公司">
+        <el-input v-model="form.purchaseCompany" maxlength="100" />
+      </el-form-item>
+      <el-form-item label="采购部门">
+        <el-input v-model="form.purchaseDepartment" maxlength="100" />
+      </el-form-item>
+      <el-form-item label="招标主体">
+        <el-input v-model="form.tenderingParty" maxlength="100" />
+      </el-form-item>
 
-      <div style="margin-bottom: 8px;">
-        <label><input v-model="form.isFixedPrice" type="checkbox" />&nbsp;是否固定价</label>
-      </div>
+      <el-divider content-position="left">备注</el-divider>
 
-      <div style="margin-bottom: 8px;">
-        <label><input v-model="form.hasDocumentFee" type="checkbox" />&nbsp;是否有文件费</label>
-      </div>
+      <el-form-item label="备注">
+        <el-input v-model="form.notes" type="textarea" :rows="3" />
+      </el-form-item>
 
-      <div style="margin-bottom: 8px;">
-        <label>保证金:&nbsp;</label>
-        <input v-model.number="form.deposit" type="number" step="0.01" />
-      </div>
+      <el-form-item>
+        <el-button type="primary" :loading="submitting" native-type="submit" @click="onSubmit">
+          {{ submitting ? '提交中...' : '提交' }}
+        </el-button>
+      </el-form-item>
+    </el-form>
 
-      <div style="margin-bottom: 8px;">
-        <label><input v-model="form.creditReportRequired" type="checkbox" />&nbsp;是否需要资信报告</label>
-      </div>
-    </fieldset>
-
-    <fieldset style="margin-bottom: 16px;">
-      <legend>时间节点</legend>
-
-      <div style="margin-bottom: 8px;">
-        <label>报名截止时间:&nbsp;</label>
-        <input v-model="form.registrationDeadline" type="datetime-local" />
-      </div>
-
-      <div style="margin-bottom: 8px;">
-        <label>技术投标截止时间:&nbsp;</label>
-        <input v-model="form.technicalTenderDeadline" type="datetime-local" />
-      </div>
-
-      <div style="margin-bottom: 8px;">
-        <label>商务投标截止时间:&nbsp;</label>
-        <input v-model="form.businessTenderDeadline" type="datetime-local" />
-      </div>
-    </fieldset>
-
-    <fieldset style="margin-bottom: 16px;">
-      <legend>采购方信息</legend>
-
-      <div style="margin-bottom: 8px;">
-        <label>采购公司:&nbsp;</label>
-        <input v-model="form.purchaseCompany" type="text" maxlength="100" />
-      </div>
-
-      <div style="margin-bottom: 8px;">
-        <label>采购部门:&nbsp;</label>
-        <input v-model="form.purchaseDepartment" type="text" maxlength="100" />
-      </div>
-
-      <div style="margin-bottom: 8px;">
-        <label>招标主体:&nbsp;</label>
-        <input v-model="form.tenderingParty" type="text" maxlength="100" />
-      </div>
-    </fieldset>
-
-    <fieldset style="margin-bottom: 16px;">
-      <legend>备注</legend>
-      <textarea v-model="form.notes" rows="3" style="width: 100%;"></textarea>
-    </fieldset>
-
-    <button type="submit" :disabled="submitting">
-      {{ submitting ? '提交中...' : '提交' }}
-    </button>
-
-    <div v-if="successMsg" style="margin-top: 16px; color: green;">
-      {{ successMsg }}
-    </div>
-    <div v-if="errorMsg" style="margin-top: 16px; color: red;">
-      {{ errorMsg }}
-    </div>
-
-    <pre v-if="created" style="margin-top: 16px; background: #f5f5f5; padding: 8px;">
-{{ JSON.stringify(created, null, 2) }}
-    </pre>
-  </form>
+    <el-card v-if="created" style="margin-top: 16px;">
+      <template #header>
+        <strong>BE 返回实体</strong>
+      </template>
+      <pre style="margin: 0;">{{ JSON.stringify(created, null, 2) }}</pre>
+    </el-card>
+  </div>
 </template>

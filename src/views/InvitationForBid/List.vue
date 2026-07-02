@@ -1,11 +1,127 @@
 <script setup lang="ts">
+/**
+ * 招标公告列表页(分页)。
+ *
+ * 数据流转:
+ *   翻页 @current-change -> reload(page) -> listInvitationForBids({page})
+ *        -> http.get -> BE PageHelper -> resp.data.data
+ *        -> rows.value / total.value / currentPage.value -> el-table / el-pagination
+ *
+ * 错误: 拦截器统一包装为 ApiError, ElMessage.error 弹出。
+ */
+import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { ApiError } from '@/api/http'
+import { listInvitationForBids } from '@/modules/invitation-for-bid/api'
+import type { BidNoticeStatus, InvitationForBid } from '@/modules/invitation-for-bid/types'
 
+// ——— 状态机 ———
+const rows = ref<InvitationForBid[]>([])
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = 10                 // 固定,不开放
+const loading = ref(false)
+
+// ——— 生命周期 ———
+onMounted(() => {
+  reload(currentPage.value)
+})
+
+// ——— 数据加载 ———
+async function reload(page: number) {
+  loading.value = true
+  try {
+    const data = await listInvitationForBids({
+      page,
+      pageSize,
+      sort: 'invitation_id desc',
+    })
+    rows.value = data.list
+    total.value = data.total
+    currentPage.value = data.pageNum
+  } catch (e) {
+    const msg = e instanceof ApiError
+        ? `[${e.code}] ${e.message}`
+        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    ElMessage.error(msg)
+  } finally {
+    loading.value = false
+  }
+}
+
+// ——— 翻页 ———
+function onPageChange(page: number) {
+  reload(page)
+}
+
+// ——— 状态 tag 颜色映射 ———
+const statusType: Record<BidNoticeStatus, '' | 'info' | 'primary' | 'success' | 'warning' | 'danger'> = {
+  DRAFT: 'info',
+  PUBLISHED: 'primary',
+  CLOSED: 'warning',
+  AWARDED: 'success',
+  CANCELLED: 'danger',
+}
+
+// ——— 时间格式化(inline,不引 dayjs) ———
+function formatTime(iso?: string): string {
+  return iso ? iso.replace('T', ' ').substring(0, 16) : '-'
+}
 </script>
 
 <template>
-  <h2>招标公告列表</h2>
+  <div style="max-width: 1200px; padding: 16px;">
+    <h2>招标公告列表</h2>
+
+    <el-table
+        v-loading="loading"
+        :data="rows"
+        border
+        stripe
+        style="width: 100%"
+    >
+      <template #empty>
+        <el-empty description="暂无公告数据" />
+      </template>
+
+      <el-table-column prop="invitationId" label="ID" width="80" />
+      <el-table-column prop="projectNo" label="项目编号" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="purchaseTaskNo" label="采购任务编号" min-width="140" show-overflow-tooltip />
+
+      <el-table-column prop="status" label="状态" width="110">
+        <template #default="{ row }: { row: InvitationForBid }">
+          <el-tag v-if="row.status" :type="statusType[row.status]" disable-transitions>
+            {{ row.status }}
+          </el-tag>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="purchaseCompany" label="采购公司" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="tenderingParty" label="招标主体" min-width="160" show-overflow-tooltip />
+
+      <el-table-column label="创建时间" width="160">
+        <template #default="{ row }: { row: InvitationForBid }">
+          {{ formatTime(row.createdAt) }}
+        </template>
+      </el-table-column>
+    </el-table>
+
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+            <!--
+                v-model:current-page + @current-change 看似重复触发,
+                实际: v-model 只更新 currentPage.value,@current-change 才会发请求。
+                若只用 v-model 去掉 @current-change,翻页不会触发 reload;
+                若只用 @current-change 去掉 v-model,pagination 显示会滞后。
+            -->
+            <el-pagination
+                v-model:current-page="currentPage"
+                :page-size="pageSize"
+                :total="total"
+                layout="total, prev, pager, next, jumper"
+                background
+                @current-change="onPageChange"
+            />
+        </div>
+    </div>
 </template>
-
-<style scoped>
-
-</style>
