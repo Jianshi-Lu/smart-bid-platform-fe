@@ -2,7 +2,9 @@ import axios from 'axios'
 
 /**
  * 业务错误异常,响应拦截器统一抛出的标准化错误。
- *
+ * 实例走的是 axios 的默认值：responseType: 'json'
+ * 一旦 body 不是合法 JSON（如后端的 /service-status 返的裸字符串 "Service is up and running."）
+ * → 抛 SyntaxError → 进 error 拦截器 →
  * 两种来源:
  *  - 第 1 层 (BE 业务错):HTTP 200 + body.code != 200,code 来自 BE Result<T>.code (200/400/404/500)
  *  - 第 2 层 (HTTP 框架错):HTTP 4xx/5xx,code 是 HTTP 状态码
