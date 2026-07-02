@@ -1,0 +1,36 @@
+/**
+ * 招标经办人模块 API。
+ *
+ * 通过 http 实例调用,自动应用拦截器(code != 200 转 ApiError)。
+ * 调用方只需 try/catch + instanceof ApiError 判错,无需关心 envelope。
+ */
+import { http } from '@/api/http'
+
+import type { Result, PageResult } from '@/types/common'
+
+import type { AddRequest, BidHandlerInfo, ListRequest } from '@/modules/bid-handler-info/types'
+
+
+/** POST /bid-handler-info/add 创建经办人。必填: handlerName / companyName / departmentName / targetEmail。 */
+export function createBidHandlerInfo(data: AddRequest): Promise<BidHandlerInfo> {
+    return http
+        .post<Result<BidHandlerInfo>>('/bid-handler-info/add', data)
+        .then((resp) => resp.data.data)
+}
+
+/**
+ * GET /bid-handler-info 分页查询经办人(PageHelper)。
+ *
+ * 走 Vite 代理(http://localhost:8080/bid-handler-info?page=&pageSize=&sort=),
+ * 返回值已拆 envelope,直接拿到 PageResult<BidHandlerInfo>。
+ *
+ * BE 端点 @RequestParam 默认值: page=1, pageSize=3, sort="bid_handler_id desc"。
+ * FE 显式传 pageSize=10 覆盖 BE 默认。
+ */
+export function listBidHandlers(
+    query: ListRequest = {}
+): Promise<PageResult<BidHandlerInfo>> {
+    return http
+        .get<Result<PageResult<BidHandlerInfo>>>('/bid-handler-info', { params: query })
+        .then((resp) => resp.data.data)
+}
