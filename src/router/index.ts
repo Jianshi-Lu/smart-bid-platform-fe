@@ -7,15 +7,25 @@
  *   - 未来若需 history 模式,改 createWebHistory() 即可
  *
  * 路由表(3 条 + 1 通配):
- *   /                  → redirect /list
- *   /list              → 招标公告列表 (InvitationForBid/List.vue)
+ *   /                  → 首页       (Home.vue)
+ *   /list              → 公告列表   (InvitationForBid/List.vue)
  *   /create            → 创建公告   (InvitationForBid/Create.vue)
- *   /:pathMatch(.*)*   → redirect /list (兜底)
+ *   /:pathMatch(.*)*   → 404 页面  (NotFound.vue,不是 redirect)
+ *
+ * 通配路由选择 404 组件而非 redirect 的原因:
+ *   - 明确告知用户"资源不存在",而不是假装没事跳到首页
+ *   - 显示访问路径方便定位
+ *   - 单一出口"返回首页"按钮
  */
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
-    { path: '/', redirect: '/list' },
+    {
+        path: '/',
+        name: 'home',
+        component: () => import('@/views/Home.vue'),
+        meta: { title: '首页' },
+    },
     {
         path: '/list',
         name: 'list',
@@ -28,7 +38,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/InvitationForBid/Create.vue'),
         meta: { title: '创建公告' },
     },
-    { path: '/:pathMatch(.*)*', redirect: '/list' },
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('@/views/NotFound.vue'),
+        meta: { title: '页面不存在' },
+    },
 ]
 
 export const router = createRouter({
