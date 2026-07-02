@@ -3,8 +3,9 @@
  * 应用根组件。
  *
  * 只负责:
- *   - 顶部 header:品牌区 + 首页 / 公告列表 / 创建公告 三个 router-link
- *   - 主区域:<router-view /> 渲染当前路由对应的视图组件
+ *   - 顶部 header:品牌区(整块可点击,跳首页)+ 主区域 <router-view />
+ *   - 品牌区整合了"首页"跳转,不再单独放 nav
+ *   - 未来需右侧 nav(用户管理/设置等),再加 .app-nav 块
  *
  * 视图组件位置约定:
  *   src/views/{Feature}/{Action}.vue
@@ -17,18 +18,12 @@ import { Document } from '@element-plus/icons-vue'
   <div class="app">
     <header class="app-header">
       <div class="app-header-inner">
-        <div class="app-brand">
+        <router-link to="/" class="app-brand-link">
           <el-icon class="app-brand-icon">
             <Document />
           </el-icon>
           <span>智能招投标平台</span>
-        </div>
-
-        <nav class="app-nav">
-          <router-link to="/">首页</router-link>
-          <router-link to="/invitation/list">公告列表</router-link>
-          <router-link to="/invitation/create">创建公告</router-link>
-        </nav>
+        </router-link>
       </div>
     </header>
 
@@ -63,37 +58,29 @@ import { Document } from '@element-plus/icons-vue'
   padding: 0 16px;
 }
 
-.app-brand {
+.app-brand-link {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #303133;
   font-size: 16px;
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.app-brand-link:hover {
+  color: #409eff;
+}
+
+.app-brand-link:hover .app-brand-icon {
+  color: #409eff;
 }
 
 .app-brand-icon {
-  color: #409eff;
   font-size: 20px;
-}
-
-.app-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.app-nav a {
-  padding: 8px 12px;
-  color: #606266;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: color 0.2s, background-color 0.2s;
-}
-
-.app-nav a:hover {
-  color: #409eff;
-  background: #f5f7fa;
+  transition: color 0.2s;
 }
 
 .app-main {
