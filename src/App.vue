@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CreateInvitationForm from '@/components/CreateInvitationForm.vue'
+import CreateInvitationForm from '@/views/InvitationForBid/Create.vue'
 </script>
 
 <template>

@@ -13,9 +13,9 @@
  *   - 错误统一由拦截器包装为 ApiError 抛出,组件用 instanceof ApiError 区分
  */
 import { reactive, ref } from 'vue'
-import { createInvitationForBid } from '@/api/invitation-for-bid'
+import { createInvitationForBid } from '@/modules/invitation-for-bid/api'
 import { ApiError } from '@/api/http'
-import type { AddRequest, InvitationForBid } from '@/types/invitation-for-bid'
+import type { AddRequest, InvitationForBid } from '@/modules/invitation-for-bid/types'
 
 // 整个表单状态:reactive 把对象包成 Proxy,字段改 Vue 自动通知 v-model 更新
 const form = reactive<AddRequest>({
