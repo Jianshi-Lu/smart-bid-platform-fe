@@ -4,16 +4,17 @@
  *
  * 数据流转链条:
  *   View -> v-model -> reactive(form) -> createInvitationForBid(form)
- *        -> axios.post(JSON.stringify) -> HTTP -> BE
+ *        -> http.post(JSON.stringify) -> HTTP -> BE
  *        -> resp.data(JSON.parse) -> created.value / successMsg -> View
  *
  * 关键约定:
- *   - 业务成功判定依据 BE 返回的 JSON code 字段,不是 HTTP 状态码
+ *   - 业务成功判定已下沉到 src/api/http.ts 拦截器,组件不再判 code
  *   - 必填字段 (bidHandlerId / projectNo / purchaseTaskNo) 由 BE @NotNull/@NotBlank 校验
- *   - BE 异常时 GlobalExceptionHandler 统一返 500 + "服务器内部错误",校验错返 400
+ *   - 错误统一由拦截器包装为 ApiError 抛出,组件用 instanceof ApiError 区分
  */
 import { reactive, ref } from 'vue'
 import { createInvitationForBid } from '@/api/invitation-for-bid'
+import { ApiError } from '@/api/http'
 import type { AddRequest, InvitationForBid } from '@/types/invitation-for-bid'
 
 // 整个表单状态:reactive 把对象包成 Proxy,字段改 Vue 自动通知 v-model 更新
@@ -50,18 +51,15 @@ async function onSubmit() {
   errorMsg.value = ''
   created.value = null
   try {
-    const resp = await createInvitationForBid(form)
-    // 必须按 JSON 的 code 字段判定,不是 HTTP 状态;BE 把业务错误也返成 200 OK
-    if (resp.data.code === 200) {
-      created.value = resp.data.data
-      successMsg.value = `创建成功, ID=${resp.data.data.invitationId}, 状态=${resp.data.data.status}`
+    const entity = await createInvitationForBid(form)
+    created.value = entity
+    successMsg.value = `创建成功, ID=${entity.invitationId}, 状态=${entity.status}`
+  } catch (e) {
+    if (e instanceof ApiError) {
+      errorMsg.value = `[${e.code}] ${e.message}`
     } else {
-      errorMsg.value = `[${resp.data.code}] ${resp.data.message}`
+      errorMsg.value = `请求失败: ${(e as Error)?.message ?? String(e)}`
     }
-  } catch (e: any) {
-    // 网络层错 (如后端宕机) 走 catch;业务错 (400/404) 走 if 分支,错误消息都在 response.data.message
-    const msg = e?.response?.data?.message ?? e?.message ?? String(e)
-    errorMsg.value = `请求失败: ${msg}`
   } finally {
     submitting.value = false
   }
