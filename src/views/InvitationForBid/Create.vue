@@ -63,13 +63,16 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div style="max-width: 800px; padding: 16px;">
+  <div class="page">
     <div class="page-header">
-      <h2>创建招标公告</h2>
-      <el-button @click="$router.push('/')">← 返回首页</el-button>
+      <h2 class="page-title">创建招标公告</h2>
+      <div class="page-actions">
+        <el-button @click="$router.push('/')">← 返回首页</el-button>
+      </div>
     </div>
 
-    <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
+    <el-card class="create-form-card page-card">
+      <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
       <el-divider content-position="left">基本信息</el-divider>
 
             <el-form-item label="经办人 ID" required>
@@ -164,9 +167,10 @@ async function onSubmit() {
           {{ submitting ? '提交中...' : '提交' }}
         </el-button>
       </el-form-item>
-    </el-form>
+      </el-form>
+    </el-card>
 
-    <el-card v-if="created" style="margin-top: 16px;">
+    <el-card v-if="created" class="create-result-card">
       <template #header>
         <strong>BE 返回实体</strong>
       </template>
@@ -176,14 +180,13 @@ async function onSubmit() {
 </template>
 
 <style scoped>
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+.create-form-card {
+  max-width: 860px;
+  margin: 0 auto;
 }
 
-.page-header h2 {
-  margin: 0;
+.create-result-card {
+  max-width: 860px;
+  margin: 16px auto 0;
 }
 </style>
