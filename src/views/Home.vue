@@ -15,8 +15,6 @@ import type { Component } from 'vue'
 import { Document, Plus } from '@element-plus/icons-vue'
 
 interface HomeEntry {
-    /** 模块名(显示在卡片小标签) */
-    module: string
     /** 卡片主标题 */
     title: string
     /** 卡片描述(1-2 句话说明用途) */
@@ -29,14 +27,12 @@ interface HomeEntry {
 
 const entries: HomeEntry[] = [
     {
-        module: '招标公告',
         title: '公告列表',
         description: '查看所有招标公告,支持分页查询与状态过滤',
         path: '/list',
         icon: Document,
     },
     {
-        module: '招标公告',
         title: '创建公告',
         description: '新建一条招标公告,填写 18 个业务字段',
         path: '/create',
@@ -67,9 +63,6 @@ const entries: HomeEntry[] = [
                         <el-icon :size="24"><component :is="entry.icon" /></el-icon>
                         <h3>{{ entry.title }}</h3>
                     </div>
-                    <el-tag size="small" type="info" class="module-tag">
-                        {{ entry.module }}
-                    </el-tag>
                     <p class="description">{{ entry.description }}</p>
                 </el-card>
             </el-col>
@@ -109,11 +102,6 @@ const entries: HomeEntry[] = [
 .card-header h3 {
     margin: 0;
     font-size: 18px;
-}
-.module-tag {
-    display: block;
-    width: fit-content;
-    margin: 0 auto 12px;
 }
 .description {
     color: #666;

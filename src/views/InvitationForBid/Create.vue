@@ -64,7 +64,10 @@ async function onSubmit() {
 
 <template>
   <div style="max-width: 800px; padding: 16px;">
-    <h2>创建招标公告</h2>
+    <div class="page-header">
+      <h2>创建招标公告</h2>
+      <el-button @click="$router.push('/')">← 返回首页</el-button>
+    </div>
 
     <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
       <el-divider content-position="left">基本信息</el-divider>
@@ -171,3 +174,16 @@ async function onSubmit() {
     </el-card>
   </div>
 </template>
+
+<style scoped>
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.page-header h2 {
+  margin: 0;
+}
+</style>

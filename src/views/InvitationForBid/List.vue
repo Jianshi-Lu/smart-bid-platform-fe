@@ -71,7 +71,10 @@ function formatTime(iso?: string): string {
 
 <template>
   <div style="max-width: 1200px; padding: 16px;">
-    <h2>招标公告列表</h2>
+    <div class="page-header">
+      <h2>招标公告列表</h2>
+      <el-button @click="$router.push('/')">← 返回首页</el-button>
+    </div>
 
     <el-table
         v-loading="loading"
@@ -125,3 +128,16 @@ function formatTime(iso?: string): string {
         </div>
     </div>
 </template>
+
+<style scoped>
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.page-header h2 {
+  margin: 0;
+}
+</style>
