@@ -4,8 +4,8 @@
  *
  * 数据流转 11 步链:
  *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
- *   ② onMounted() → reload(currentPage.value) 初始化第 1 页
- *   ③ reload(page) 置 loading=true → <el-table v-loading> 转圈
+ *   ② onMounted() → load(currentPage.value) 初始化第 1 页
+ *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
  *   ④ 调用 listInvitationForBids({page, pageSize, sort:'invitation_id desc'})
  *        → modules/invitation-for-bid/api.ts 的 http.get<Result<PageResult<InvitationForBid>>>
  *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
@@ -13,7 +13,7 @@
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
  *   ⑧ loading=false → <el-table> 渲染 7 列 + <el-pagination :total>
  *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → onPageChange(page) → reload(page)
+ *   ⑩ @current-change → onPageChange(page) → load(page)
  *   ⑪ 回到 ③ 循环
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
@@ -37,11 +37,11 @@ const loading = ref(false)
 
 // ——— 生命周期 ———
 onMounted(() => {
-  reload(currentPage.value)
+  load(currentPage.value)
 })
 
 // ——— 数据加载 ———
-async function reload(page: number) {
+async function load(page: number) {
   loading.value = true
   try {
     const data = await listInvitationForBids({
@@ -64,7 +64,7 @@ async function reload(page: number) {
 
 // ——— 翻页 ———
 function onPageChange(page: number) {
-  reload(page)
+  load(page)
 }
 
 // ——— 状态 tag 颜色映射 ———
@@ -129,7 +129,7 @@ function formatTime(iso?: string): string {
             <!--
                 v-model:current-page + @current-change 看似重复触发,
                 实际: v-model 只更新 currentPage.value,@current-change 才会发请求。
-                若只用 v-model 去掉 @current-change,翻页不会触发 reload;
+                若只用 v-model 去掉 @current-change,翻页不会触发 load;
                 若只用 @current-change 去掉 v-model,pagination 显示会滞后。
             -->
             <el-pagination
