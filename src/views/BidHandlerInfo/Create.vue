@@ -2,13 +2,27 @@
 /**
  * 创建招标经办人表单(Element Plus 版)。
  *
- * 数据流转:
- *   el-form v-model -> form.* -> submit() -> createBidHandlerInfo(form)
- *        -> http.post -> BE -> resp.data.data
- *        -> ElMessage.success + created.value -> el-card 展示 JSON
+ * 数据流转 11 步链:
+ *   ① <script setup>: reactive<AddRequest>(form) 创建内存对象,4 字段
+ *   ② <template>: 每个 el-form-item 用 el-input v-model="form.xxx" 双向绑定
+ *   ③ 用户在 el-input 中输入内容
+ *   ④ v-model 自动把输入写入 form.xxx(form 响应式 Proxy 触发更新)
+ *   ⑤ 用户点击 <el-button @click="onSubmit">
+ *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
+ *   ⑦ onSubmit 内 { ...form } 读取并组装请求体(全必填,无数字兜底)
+ *   ⑧ 调用 createBidHandlerInfo(form) → modules/bid-handler-info/api.ts
+ *        的 http.post<Result<BidHandlerInfo>>('/bid-handler-info/add', data)
+ *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
+ *        + 异步发送通知邮件到 targetEmail
+ *   ⑩ BE 返回 Result<BidHandlerInfo>,响应拦截器拆 envelope → Promise resolve(entity)
+ *   ⑪ created.value = entity → ElMessage.success + <el-card> 展示 JSON
  *
- * 错误: 拦截器包装 ApiError, ElMessage.error。
+ * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  * 校验: 全部交给 BE (@NotBlank), FE 不重复。
+ *
+ * 模块特有: 4 字段全必填,无日期/无数字字段;
+ * maxlength 对齐 BE @Size(handlerName:50 / companyName:100 / departmentName:100 / targetEmail:255);
+ * 创建后 BE 异步发邮件到 targetEmail,失败不影响创建结果。
  */
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'

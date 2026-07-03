@@ -1,18 +1,27 @@
 <script setup lang="ts">
 /**
- * 投标记录列表页(分页)。
+ * 投标记录列表页(PageHelper 分页)。
  *
- * 数据流转:
- *   翻页 @current-change -> reload(page) -> listBidRecords({page})
- *        -> http.get -> BE PageHelper -> resp.data.data
- *        -> rows.value / total.value / currentPage.value -> el-table / el-pagination
+ * 数据流转 11 步链:
+ *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
+ *   ② onMounted() → reload(currentPage.value) 初始化第 1 页
+ *   ③ reload(page) 置 loading=true → <el-table v-loading> 转圈
+ *   ④ 调用 listBidRecords({page, pageSize, sort:'bid_record_id desc'})
+ *        → modules/bid-record/api.ts 的 http.get<Result<PageResult<BidRecord>>>
+ *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
+ *   ⑥ BE 返回 Result<PageResult<BidRecord>>,响应拦截器拆 envelope
+ *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
+ *   ⑧ loading=false → <el-table> 渲染 7 列 + <el-pagination :total>
+ *   ⑨ 用户点击 <el-pagination> 跳页
+ *   ⑩ @current-change → onPageChange(page) → reload(page)
+ *   ⑪ 回到 ③ 循环
  *
- * 错误: 拦截器统一包装为 ApiError, ElMessage.error 弹出。
+ * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
- * 显示说明:
- *   - 报价用 quotePrice.toFixed(2) 兜 2 位小数(避免 JS 浮点尾巴)
- *   - 投标时间用 formatTime inline 处理(不引 dayjs)
- *   - credentials 不展示(PII 风险)
+ * 模块特有: 7 列(ID/公告ID/投标人/报价/次序/时间/联系方式);
+ * quotePrice 用 inline formatPrice 兜 2 位小数(避免 JS 浮点尾巴);
+ * bidAt 用 inline formatTime 处理 ISO-8601;
+ * credentials 不展示(PII 风险)。
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'

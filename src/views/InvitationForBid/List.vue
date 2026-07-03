@@ -1,13 +1,26 @@
 <script setup lang="ts">
 /**
- * 招标公告列表页(分页)。
+ * 招标公告列表页(PageHelper 分页)。
  *
- * 数据流转:
- *   翻页 @current-change -> reload(page) -> listInvitationForBids({page})
- *        -> http.get -> BE PageHelper -> resp.data.data
- *        -> rows.value / total.value / currentPage.value -> el-table / el-pagination
+ * 数据流转 11 步链:
+ *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
+ *   ② onMounted() → reload(currentPage.value) 初始化第 1 页
+ *   ③ reload(page) 置 loading=true → <el-table v-loading> 转圈
+ *   ④ 调用 listInvitationForBids({page, pageSize, sort:'invitation_id desc'})
+ *        → modules/invitation-for-bid/api.ts 的 http.get<Result<PageResult<InvitationForBid>>>
+ *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
+ *   ⑥ BE 返回 Result<PageResult<InvitationForBid>>,响应拦截器拆 envelope
+ *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
+ *   ⑧ loading=false → <el-table> 渲染 7 列 + <el-pagination :total>
+ *   ⑨ 用户点击 <el-pagination> 跳页
+ *   ⑩ @current-change → onPageChange(page) → reload(page)
+ *   ⑪ 回到 ③ 循环
  *
- * 错误: 拦截器统一包装为 ApiError, ElMessage.error 弹出。
+ * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
+ *
+ * 模块特有: 7 列展示(含 status 用 el-tag 按 BidNoticeStatus 映射颜色);
+ * createdAt 用 inline formatTime 处理 ISO-8601 字符串;
+ * pageSize=10 固定(覆盖 BE 默认)。
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'

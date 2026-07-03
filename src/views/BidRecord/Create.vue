@@ -2,18 +2,27 @@
 /**
  * 创建投标记录表单(Element Plus 版)。
  *
- * 数据流转:
- *   el-form v-model -> form.* -> submit() -> createBidRecord(form)
- *        -> http.post -> BE -> resp.data.data
- *        -> ElMessage.success + created.value -> el-card 展示 JSON
+ * 数据流转 11 步链:
+ *   ① <script setup>: reactive<AddRequest>(form) 创建内存对象,5 字段(4 必填 + 1 可选)
+ *   ② <template>: 每个 el-form-item 用 el-input v-model="form.xxx" 双向绑定
+ *   ③ 用户在 el-input-number(invitationId/quotePrice) / el-input(bidderName/bidderContact) / el-input type="textarea"(credentials) 中输入
+ *   ④ v-model 自动把输入写入 form.xxx(form 响应式 Proxy 触发更新)
+ *   ⑤ 用户点击 <el-button @click="onSubmit">
+ *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
+ *   ⑦ onSubmit 内 { ...form, invitationId ?? 0 } 读取并组装请求体
+ *   ⑧ 调用 createBidRecord(form) → modules/bid-record/api.ts
+ *        的 http.post<Result<BidRecord>>('/bid-record/add', data)
+ *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
+ *        + 自动算 bidNo(同 invitationId+bidderName 下 max+1)与 bidAt(CURRENT_TIMESTAMP)
+ *   ⑩ BE 返回 Result<BidRecord>(含 bidNo/bidAt),响应拦截器拆 envelope → Promise resolve(entity)
+ *   ⑪ created.value = entity → ElMessage.success(`创建成功 ID=${id} 投标次序=${bidNo}`) + <el-card> 展示 JSON
  *
- * 错误: 拦截器包装 ApiError, ElMessage.error。
+ * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  * 校验: 全部交给 BE (@NotNull/@NotBlank), FE 不重复。
  *
- * 重要:
- *   - bidNo 与 bidAt 由 BE 在 add 时自动算(同 invitationId+bidderName 下 bidNo 递增),
- *     FE 表单不显示输入框,创建后从返回 entity 看到 bidNo
- *   - credentials(资信材料)可选,无 required
+ * 模块特有: bidNo 与 bidAt 由 BE 在 add 时自动算,AddRequest 不包含,form 无对应输入框,创建后从返回 entity 看到;
+ * quotePrice(BigDecimal)用 el-input-number :precision="2" :step="0.01";
+ * credentials(资信材料)可选,BE @Size(max=500)。
  */
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'

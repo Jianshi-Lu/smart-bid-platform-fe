@@ -2,13 +2,26 @@
 /**
  * 创建招标公告表单(Element Plus 版)。
  *
- * 数据流转:
- *   el-form v-model -> form.* -> submit() -> createInvitationForBid(form)
- *        -> http.post -> BE -> resp.data.data
- *        -> ElMessage.success + created.value -> el-card 展示 JSON
+ * 数据流转 11 步链:
+ *   ① <script setup>: reactive<AddRequest>(form) 创建内存对象,18 字段
+ *   ② <template>: 每个 el-form-item 用 el-input v-model="form.xxx" 双向绑定
+ *   ③ 用户在 el-input / el-input-number / el-switch / el-date-picker 中输入
+ *   ④ v-model 自动把输入写入 form.xxx(form 响应式 Proxy 触发更新)
+ *   ⑤ 用户点击 <el-button @click="onSubmit">
+ *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
+ *   ⑦ onSubmit 内 { ...form, bidHandlerId ?? 0 } 读取并组装请求体
+ *   ⑧ 调用 createInvitationForBid(form) → modules/invitation-for-bid/api.ts
+ *        的 http.post<Result<InvitationForBid>>('/invitation-for-bid/add', data)
+ *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
+ *   ⑩ BE 返回 Result<InvitationForBid>,响应拦截器拆 envelope → Promise resolve(entity)
+ *   ⑪ created.value = entity → ElMessage.success + <el-card> 展示 JSON
  *
- * 错误: 拦截器包装 ApiError, ElMessage.error。
+ * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  * 校验: 全部交给 BE (@NotNull/@NotBlank), FE 不重复。
+ *
+ * 模块特有: 3 必填(bidHandlerId/projectNo/purchaseTaskNo) + 15 可选;
+ * 含 3 个 el-date-picker,value-format="YYYY-MM-DDTHH:mm:ss" 匹配 BE ISO-8601;
+ * deposit(BigDecimal)用 el-input-number :precision="2" :step="0.01"。
  */
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'

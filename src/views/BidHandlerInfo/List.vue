@@ -1,13 +1,25 @@
 <script setup lang="ts">
 /**
- * 招标经办人列表页(分页)。
+ * 招标经办人列表页(PageHelper 分页)。
  *
- * 数据流转:
- *   翻页 @current-change -> reload(page) -> listBidHandlers({page})
- *        -> http.get -> BE PageHelper -> resp.data.data
- *        -> rows.value / total.value / currentPage.value -> el-table / el-pagination
+ * 数据流转 11 步链:
+ *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
+ *   ② onMounted() → reload(currentPage.value) 初始化第 1 页
+ *   ③ reload(page) 置 loading=true → <el-table v-loading> 转圈
+ *   ④ 调用 listBidHandlers({page, pageSize, sort:'bid_handler_id desc'})
+ *        → modules/bid-handler-info/api.ts 的 http.get<Result<PageResult<BidHandlerInfo>>>
+ *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
+ *   ⑥ BE 返回 Result<PageResult<BidHandlerInfo>>,响应拦截器拆 envelope
+ *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
+ *   ⑧ loading=false → <el-table> 渲染 5 列 + <el-pagination :total>
+ *   ⑨ 用户点击 <el-pagination> 跳页
+ *   ⑩ @current-change → onPageChange(page) → reload(page)
+ *   ⑪ 回到 ③ 循环
  *
- * 错误: 拦截器统一包装为 ApiError, ElMessage.error 弹出。
+ * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
+ *
+ * 模块特有: 5 列(ID/姓名/公司/部门/邮箱);
+ * pageSize=10 固定,显式覆盖 BE 默认的 3(让 3 模块列表行为一致)。
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
