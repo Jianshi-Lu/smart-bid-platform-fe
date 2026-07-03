@@ -18,10 +18,11 @@
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
- * 模块特有: 7 列(ID/公告ID/投标人/报价/次序/时间/联系方式);
+ * 模块特有: 8 列(ID/公告ID/投标人/报价/次序/时间/联系方式/资信材料);
  * quotePrice 用 inline formatPrice 兜 2 位小数(避免 JS 浮点尾巴);
  * bidAt 用 inline formatTime 处理 ISO-8601;
- * credentials 不展示(PII 风险)。
+ * credentials 是"资信材料链接",最长 500 字符,
+ * 列用 show-overflow-tooltip 截断 + hover 弹完整内容。
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -114,6 +115,7 @@ function formatTime(iso?: string): string {
         </template>
       </el-table-column>
       <el-table-column prop="bidderContact" label="联系方式" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="credentials" label="资信材料" min-width="200" show-overflow-tooltip />
     </el-table>
 
     <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
