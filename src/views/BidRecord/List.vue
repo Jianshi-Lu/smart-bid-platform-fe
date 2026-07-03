@@ -91,6 +91,7 @@ function formatTime(iso?: string): string {
       </div>
     </div>
 
+    <!--声明整张表的数据来源-->
     <el-table
         v-loading="loading"
         :data="rows"
@@ -101,7 +102,7 @@ function formatTime(iso?: string): string {
       <template #empty>
         <el-empty description="暂无投标记录" />
       </template>
-
+      <!--声明每一列从行数据里取哪个字段-->
       <el-table-column prop="bidRecordId" label="ID" width="80" />
       <el-table-column prop="invitationId" label="公告 ID" width="100" />
       <el-table-column prop="bidderName" label="投标人" min-width="160" show-overflow-tooltip />
