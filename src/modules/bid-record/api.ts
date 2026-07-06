@@ -10,12 +10,15 @@
  * 数据承接载体(view ↔ api ↔ http ↔ BE):
  *   - createBidRecord: AddRequest (4 必填 + 1 可选) → BidRecord 实体(含 BE 自动算的 bidNo/bidAt)
  *   - listBidRecords:  ListRequest (page/pageSize/sort) → PageResult<BidRecord>
- *   - analyzeRisk:     number (bidRecordId) → RiskAnalysis 实体
+ *   - analyzeRisk:     number (bidRecordId) → RiskAnalysis 实体(类型见 risk-analysis 模块)
  *
  * 对应后端调用入口(BidRecordController.java):
  *   - POST /bid-record/add                  → addBidRecord
  *   - GET  /bid-record?page=&pageSize=&sort= → listBidRecord (PageHelper 分页)
  *   - POST /bid-record/analyze-risk/{id}    → analyzeRisk (同步 DeepSeek,落库 risk_analysis)
+ *
+ * 跨模块依赖: RiskAnalysis 类型来自 modules/risk-analysis/types.ts(后端独立 Controller 后
+ *           前端同步分离,bid-record 通过 import 引用,严格单向依赖)。
  *
  * 错误处理: 所有调用都通过拦截器统一包装 ApiError,view 只需 try/catch + instanceof ApiError。
  */
@@ -23,7 +26,8 @@ import { http } from '@/api/http'
 
 import type { Result, PageResult } from '@/types/common'
 
-import type { AddRequest, BidRecord, ListRequest, RiskAnalysis } from '@/modules/bid-record/types'
+import type { AddRequest, BidRecord, ListRequest } from '@/modules/bid-record/types'
+import type { RiskAnalysis } from '@/modules/risk-analysis/types'
 
 
 /**

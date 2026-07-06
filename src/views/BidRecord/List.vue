@@ -6,7 +6,8 @@
  *
  * 依赖关系:
  *   - api.ts: listBidRecords(列表加载) + analyzeRisk(行内分析)
- *   - types.ts: BidRecord(行类型) + RiskAnalysis(分析结果类型) + ListRequest
+ *   - bid-record/types.ts: BidRecord(行类型) + ListRequest
+ *   - risk-analysis/types.ts: RiskAnalysis(分析结果类型,跨模块依赖)
  *   - http.ts: ApiError(统一错误类型)
  *   - element-plus: el-table / el-pagination / el-button / el-dialog / el-form / el-tag
  *
@@ -59,7 +60,8 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { listBidRecords, analyzeRisk } from '@/modules/bid-record/api'
-import type { BidRecord, RiskAnalysis } from '@/modules/bid-record/types'
+import type { BidRecord } from '@/modules/bid-record/types'
+import type { RiskAnalysis } from '@/modules/risk-analysis/types'
 
 // ——— 列表状态机 ———
 const rows = ref<BidRecord[]>([])

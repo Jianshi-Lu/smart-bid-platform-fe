@@ -1,7 +1,7 @@
 /**
- * 投标记录 + 风险分析 TS 类型。
+ * 投标记录 TS 类型。
  *
- * 文件职责: 镜像 BE 的 BidRecord.java / RiskAnalysis.java / 各 *Request.java,
+ * 文件职责: 镜像 BE 的 BidRecord.java / 各 *Request.java,
  *          提供给 view 和 api 层使用。
  *
  * 字段命名: 严格对齐 BE getter(驼峰);BE 修改字段后必须同步更新本文件。
@@ -10,8 +10,9 @@
  * 特殊字段:
  *   - BidRecord.bidNo / bidAt: BE 自动算/填,AddRequest 不包含,form 无输入框
  *   - BidRecord.credentials: 资信材料链接,可选
- *   - RiskAnalysis.riskLevel: 枚举字符串 (LOW / MEDIUM / HIGH / CRITICAL)
- *   - RiskAnalysis.rawResponse: DeepSeek 原始 JSON 字符串,长度大,UI 默认不展示
+ *
+ * 注意: 风险分析相关类型(RiskAnalysis)已迁移到 src/modules/risk-analysis/types.ts,
+ *       本模块通过 import 引用(BidRecord 列表的"风险分析"按钮 + 弹窗)。
  *
  * 依赖关系: 不依赖任何业务文件,只 import 自有类型。
  */
@@ -58,22 +59,4 @@ export interface ListRequest {
      * BE 透传给 ORDER BY 子句。
      */
     sort?: string
-}
-
-/**
- * 风险分析结果(BE 返回的 JSON 结构)。
- * 对齐 BE RiskAnalysis.java 的 getter 命名(驼峰)。
- *
- * 由 RiskAnalysisService.analyzeRisk() 同步生成,落库 risk_analysis 表后返回。
- */
-export interface RiskAnalysis {
-    analysisId: number          // 主键,自增
-    bidRecordId: number         // 关联的投标记录 ID
-    bidderName: string          // 投标人名称(冗余存储,便于查询)
-    riskLevel: string           // 风险等级(枚举字符串: LOW / MEDIUM / HIGH / CRITICAL)
-    summary: string             // 风险摘要(AI 生成的简短描述)
-    suggestions: string         // 风险建议(AI 生成的处置建议)
-    rawResponse?: string        // DeepSeek 原始 JSON 字符串(可选,长度大,UI 默认不展示)
-    promptVersion?: string      // 提示词版本(可选,用于追溯 AI 行为)
-    analyzedAt: string          // 分析时间,ISO-8601 字符串
 }
