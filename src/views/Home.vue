@@ -7,17 +7,18 @@
  *   2. el-row 响应式列数(:xs/:sm/:md/:lg),1/2/3/4 列自动 reflow
  *   3. 卡片整体可点击跳转,鼠标 hover 抬升阴影
  *
- * 当前 6 entries,按 3 模块 × 2 动作(列表 + 创建)展开:
+ * 当前 7 entries:
  *   - 招标公告:列表 + 创建
  *   - 招标经办人:列表 + 创建
  *   - 投标记录:列表 + 创建
+ *   - 风险分析:仅列表(BE RiskAnalysisController 只读入口,无 create/edit/delete)
  *
- * 未来加新模块的姿势(在 entries 数组追加 2 个对象):
- *   { title: '...', description: '...', path: '/xxx/list', icon: ... }
- *   { title: '...', description: '...', path: '/xxx/create', icon: ... }
+ * 未来加新模块的姿势(在 entries 数组追加 1-2 个对象):
+ *   列表+创建双动作模块: 追加 2 个对象 (如 {title, path:'/xxx/list'} + {title, path:'/xxx/create'})
+ *   只读模块: 追加 1 个对象 (如 {title:'风险分析列表', path:'/xxx/list', icon:...})
  */
 import type { Component } from 'vue'
-import { Document, List, Plus, User, UserFilled } from '@element-plus/icons-vue'
+import { DataAnalysis, Document, List, Plus, User, UserFilled } from '@element-plus/icons-vue'
 
 interface HomeEntry {
     /** 卡片主标题 */
@@ -66,6 +67,12 @@ const entries: HomeEntry[] = [
         description: '为某条招标公告创建一条投标记录',
         path: '/bid-record/create',
         icon: Plus,
+    },
+    {
+        title: '风险分析列表',
+        description: '查看所有 AI 风险分析历史结果,只读入口(由投标列表的"风险分析"按钮触发)',
+        path: '/risk-analysis/list',
+        icon: DataAnalysis,
     },
 ]
 </script>
