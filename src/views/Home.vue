@@ -70,7 +70,7 @@ const entries: HomeEntry[] = [
     },
     {
         title: '风险分析列表',
-        description: '查看所有 AI 风险分析历史结果,只读入口(由投标列表的"风险分析"按钮触发)',
+        description: '查看所有 AI 风险分析历史结果',
         path: '/risk-analysis/list',
         icon: DataAnalysis,
     },
