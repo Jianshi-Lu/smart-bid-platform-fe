@@ -13,7 +13,7 @@
  *   /purchaser/bid-handler-info/*  → 招标经办人 (BidHandlerInfo/*.vue)
  *   /purchaser/bid-record/*        → 投标记录 (BidRecord/*.vue)
  *   /purchaser/risk-analysis/list   → 风险分析 (RiskAnalysis/List.vue,只读)
- *   /supplier                      → 投标方首页 (SupplierHome.vue,占位)
+ *   /supplier                      → 投标方首页 (Supplier/Home.vue,1 卡片)
  *   /:pathMatch(.*)*               → 404 页面  (NotFound.vue,不是 redirect)
  *
  * 命名规则:
@@ -30,7 +30,7 @@
  *   - 单一出口"返回首页"按钮(品牌跳 / 角色选择器)
  *
  * 未来加投标方业务的姿势: 在 routes 数组追加 /supplier/xxx 路径,
- * SupplierHome.vue 也可改成嵌套布局(layout + 子路由)。
+ * Supplier/Home.vue 也可改成嵌套布局(layout + 子路由)。
  */
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 
@@ -38,13 +38,13 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/',
         name: 'role-selector',
-        component: () => import('@/views/RoleSelector.vue'),
+        component: () => import('@/views/common/RoleSelector.vue'),
         meta: { title: '角色选择' },
     },
     {
         path: '/purchaser',
         name: 'purchaser-home',
-        component: () => import('@/views/PurchaserHome.vue'),
+        component: () => import('@/views/Purchaser/Home.vue'),
         meta: { title: '招标方首页' },
     },
     {
@@ -92,25 +92,25 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/supplier',
         name: 'supplier-home',
-        component: () => import('@/views/SupplierHome.vue'),
+        component: () => import('@/views/Supplier/Home.vue'),
         meta: { title: '投标方首页' },
     },
     {
         path: '/supplier/invitation/list',
         name: 'supplier-invitation-list',
-        component: () => import('@/views/SupplierInvitationList.vue'),
+        component: () => import('@/views/Supplier/List.vue'),
         meta: { title: '投标项目列表' },
     },
     {
         path: '/supplier/bid-record/create',
         name: 'supplier-bid-record-create',
-        component: () => import('@/views/SupplierBidRecordCreate.vue'),
+        component: () => import('@/views/Supplier/Create.vue'),
         meta: { title: '投标录入' },
     },
     {
         path: '/:pathMatch(.*)*',
         name: 'not-found',
-        component: () => import('@/views/NotFound.vue'),
+        component: () => import('@/views/common/NotFound.vue'),
         meta: { title: '页面不存在' },
     },
 ]
