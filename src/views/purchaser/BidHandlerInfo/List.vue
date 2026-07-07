@@ -24,8 +24,8 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { listBidHandlers } from '@/modules/bid-handler-info/api'
-import type { BidHandlerInfo } from '@/modules/bid-handler-info/types'
+import { listBidHandlers } from '@/api/bid-handler-info'
+import type { BidHandlerInfo } from '@/types/bid-handler-info'
 
 // ——— 状态机 ———
 const rows = ref<BidHandlerInfo[]>([])

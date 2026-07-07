@@ -34,10 +34,10 @@ import { Document, ShoppingCart } from '@element-plus/icons-vue'
             </el-col>
 
             <el-col :xs="24" :md="10" :lg="8">
-                <el-card class="role-card role-card-disabled" shadow="hover" @click="$router.push('/supplier')">
+                <el-card class="role-card" shadow="hover" @click="$router.push('/supplier')">
                     <el-icon :size="64" class="role-icon"><ShoppingCart /></el-icon>
                     <h2>投标方入口</h2>
-                    <p class="description">即将推出...</p>
+                    <p class="description"></p>
                 </el-card>
             </el-col>
         </el-row>

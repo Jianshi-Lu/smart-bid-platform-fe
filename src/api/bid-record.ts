@@ -26,8 +26,8 @@ import { http } from '@/api/http'
 
 import type { Result, PageResult } from '@/types/common'
 
-import type { AddRequest, BidRecord, ListRequest } from '@/modules/bid-record/types'
-import type { RiskAnalysis } from '@/modules/risk-analysis/types'
+import type { AddRequest, BidRecord, ListRequest } from '@/types/bid-record'
+import type { RiskAnalysis } from '@/types/risk-analysis'
 
 
 /**

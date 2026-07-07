@@ -27,8 +27,8 @@
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { createBidHandlerInfo } from '@/modules/bid-handler-info/api'
-import type { AddRequest, BidHandlerInfo } from '@/modules/bid-handler-info/types'
+import { createBidHandlerInfo } from '@/api/bid-handler-info'
+import type { AddRequest, BidHandlerInfo } from '@/types/bid-handler-info'
 
 const form = reactive<AddRequest>({
   handlerName: '',

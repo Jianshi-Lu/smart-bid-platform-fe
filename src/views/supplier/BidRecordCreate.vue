@@ -50,10 +50,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { getInvitationForBid } from '@/modules/invitation-for-bid/api'
-import { createBidRecord } from '@/modules/bid-record/api'
-import type { InvitationForBid } from '@/modules/invitation-for-bid/types'
-import type { AddRequest, BidRecord } from '@/modules/bid-record/types'
+import { getInvitationForBid } from '@/api/invitation-for-bid'
+import { createBidRecord } from '@/api/bid-record'
+import type { InvitationForBid } from '@/types/invitation-for-bid'
+import type { AddRequest, BidRecord } from '@/types/bid-record'
 
 const route = useRoute()
 const router = useRouter()

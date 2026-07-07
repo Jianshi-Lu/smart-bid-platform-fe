@@ -40,8 +40,8 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { listRiskAnalyses } from '@/modules/risk-analysis/api'
-import type { RiskAnalysis } from '@/modules/risk-analysis/types'
+import { listRiskAnalyses } from '@/api/risk-analysis'
+import type { RiskAnalysis } from '@/types/risk-analysis'
 
 // ——— 状态机 ———
 const rows = ref<RiskAnalysis[]>([])

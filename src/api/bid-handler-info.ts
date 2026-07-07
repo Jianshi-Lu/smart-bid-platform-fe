@@ -8,7 +8,7 @@ import { http } from '@/api/http'
 
 import type { Result, PageResult } from '@/types/common'
 
-import type { AddRequest, BidHandlerInfo, ListRequest } from '@/modules/bid-handler-info/types'
+import type { AddRequest, BidHandlerInfo, ListRequest } from '@/types/bid-handler-info'
 
 
 /** POST /bid-handler-info/add 创建经办人。必填: handlerName / companyName / departmentName / targetEmail。 */

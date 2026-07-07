@@ -24,7 +24,7 @@ import { http } from '@/api/http'
 
 import type { Result, PageResult } from '@/types/common'
 
-import type { ListRequest, RiskAnalysis } from '@/modules/risk-analysis/types'
+import type { ListRequest, RiskAnalysis } from '@/types/risk-analysis'
 
 
 /**

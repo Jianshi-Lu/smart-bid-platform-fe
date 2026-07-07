@@ -44,8 +44,8 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { listInvitationForBids } from '@/modules/invitation-for-bid/api'
-import type { BidNoticeStatus, InvitationForBid } from '@/modules/invitation-for-bid/types'
+import { listInvitationForBids } from '@/api/invitation-for-bid'
+import type { BidNoticeStatus, InvitationForBid } from '@/types/invitation-for-bid'
 
 // ——— 状态机 ———
 const rows = ref<InvitationForBid[]>([])

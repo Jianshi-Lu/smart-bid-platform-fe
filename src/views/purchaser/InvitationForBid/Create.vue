@@ -26,8 +26,8 @@
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { createInvitationForBid } from '@/modules/invitation-for-bid/api'
-import type { AddRequest, InvitationForBid } from '@/modules/invitation-for-bid/types'
+import { createInvitationForBid } from '@/api/invitation-for-bid'
+import type { AddRequest, InvitationForBid } from '@/types/invitation-for-bid'
 
 // el-input-number 对 0 展示"空",所以用 null 占位,提交时 ?? 0 兜底
 const form = reactive<AddRequest>({

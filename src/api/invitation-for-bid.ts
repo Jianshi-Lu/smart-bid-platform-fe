@@ -8,7 +8,7 @@ import { http } from '@/api/http'
 
 import type { Result, PageResult } from '@/types/common'
 
-import type { AddRequest, InvitationForBid, ListRequest } from '@/modules/invitation-for-bid/types'
+import type { AddRequest, InvitationForBid, ListRequest } from '@/types/invitation-for-bid'
 
 
 /** POST /invitation-for-bid/add 创建公告。必填: bidHandlerId / projectNo / purchaseTaskNo。 */

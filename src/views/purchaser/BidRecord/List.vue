@@ -59,9 +59,9 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { listBidRecords, analyzeRisk } from '@/modules/bid-record/api'
-import type { BidRecord } from '@/modules/bid-record/types'
-import type { RiskAnalysis } from '@/modules/risk-analysis/types'
+import { listBidRecords, analyzeRisk } from '@/api/bid-record'
+import type { BidRecord } from '@/types/bid-record'
+import type { RiskAnalysis } from '@/types/risk-analysis'
 
 // ——— 列表状态机 ———
 const rows = ref<BidRecord[]>([])
