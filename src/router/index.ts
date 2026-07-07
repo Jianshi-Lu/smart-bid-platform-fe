@@ -96,6 +96,18 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '投标方首页' },
     },
     {
+        path: '/supplier/invitation/list',
+        name: 'supplier-invitation-list',
+        component: () => import('@/views/SupplierInvitationList.vue'),
+        meta: { title: '投标项目列表' },
+    },
+    {
+        path: '/supplier/bid-record/create',
+        name: 'supplier-bid-record-create',
+        component: () => import('@/views/SupplierBidRecordCreate.vue'),
+        meta: { title: '投标录入' },
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: 'not-found',
         component: () => import('@/views/NotFound.vue'),

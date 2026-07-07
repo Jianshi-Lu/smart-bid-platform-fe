@@ -33,3 +33,16 @@ export function listInvitationForBids(
         .get<Result<PageResult<InvitationForBid>>>('/invitation-for-bid', { params: query })
         .then((resp) => resp.data.data)
 }
+
+/**
+ * GET /invitation-for-bid/{id} 按 ID 查询单条公告。
+ *
+ * BE 端点:InvitationForBidController.getByIdInvitationForBid。
+ *   - 找到:返回 Result<InvitationForBid>(code 200)
+ *   - 找不到:返回 Result.error(404, "记录不存在")(仍 HTTP 200)
+ */
+export function getInvitationForBid(id: number): Promise<InvitationForBid> {
+    return http
+        .get<Result<InvitationForBid>>(`/invitation-for-bid/${id}`)
+        .then((resp) => resp.data.data)
+}
