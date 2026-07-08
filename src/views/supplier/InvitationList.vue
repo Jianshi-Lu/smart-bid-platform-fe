@@ -35,6 +35,20 @@
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
+ * ─── Class hierarchy ───
+ *   const rows / total / currentPage / pageSize=10 / loading (ref)
+ *   const statusType: Record<BidNoticeStatus, ElementTagType>
+ *   function load(page) / onPageChange(page)
+ *   function goBid(invitationId)        // 行末"我要投标" → /supplier/bid-record/create?invitationId=N
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: listInvitationForBids(query)        // 跨角色复用 purchaser 模块的读端点
+ *   - 跨组件导航: $router.push (返回首页 / 投标录入)
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - scoped (本文件 owns): 无
+ *
  * 模块特有: 7 列 + 1 操作列(行末"我要投标"按钮);
  *          状态展示用 el-tag 颜色映射(同 InvitationForBid/List);
  *          不过滤状态(与招标方列表一致,所有状态都展示,前端无变更状态的入口);

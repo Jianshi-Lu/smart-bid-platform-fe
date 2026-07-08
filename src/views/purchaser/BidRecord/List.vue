@@ -45,9 +45,23 @@
  *   ⑪ el-dialog 弹窗展示 8 字段(分析ID/记录ID/投标人/等级/摘要/建议/版本/时间)
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- *                      + analyzingId 置 null → 按钮恢复
- * 并发控制: 同一时刻只能分析一行(analyzingId !== null 时其他行按钮 disabled)
- *          ,避免结果混淆 / 多个并发 DeepSeek 请求
+ *
+ * ─── Class hierarchy ───
+ *   const rows / total / currentPage / pageSize=10 / loading (ref)
+ *   const riskDialogVisible = ref(false)
+ *   const currentAnalysis   = ref<RiskAnalysis | null>(null)   // 弹窗展示实体
+ *   const analyzing         = ref(false)                       // 按钮 loading
+ *   function load(page) / onPageChange(page)
+ *   async function onAnalyzeRisk(bidRecordId)                   // 行末按钮 → POST analyze-risk
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: listBidRecords(query) + analyzeRisk(id)         // 跨模块: 调 risk-analysis 域
+ *   - 类型依赖: BidRecord(自有) + RiskAnalysis(从 types/risk-analysis import)
+ *   - 跨组件导航: $router.push('/')
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - scoped (本文件 owns): .risk-dialog (风险分析弹窗宽度)
  *
  * 模块特有: 8 列 + 1 操作列;
  * quotePrice 用 inline formatPrice 兜 2 位小数(避免 JS 浮点尾巴);
@@ -55,6 +69,9 @@
  * credentials 是"资信材料链接",最长 500 字符,
  * 列用 show-overflow-tooltip 截断 + hover 弹完整内容;
  * 新增 riskLevel 颜色映射(LOW/MEDIUM/HIGH/CRITICAL → success/warning/danger/danger)。
+ *
+ * 并发控制: 同一时刻只能分析一行(analyzingId !== null 时其他行按钮 disabled),
+ *          避免结果混淆 / 多个并发 DeepSeek 请求。
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'

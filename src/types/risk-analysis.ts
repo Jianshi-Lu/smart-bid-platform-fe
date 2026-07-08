@@ -17,6 +17,29 @@
  *       的行内"风险分析"按钮需要此类型展示 dialog)。
  *       后端新增独立 RiskAnalysisController(GET /risk-analysis)后,前端同步分离
  *       为独立 risk-analysis 模块,bid-record 通过 import 引用此类型。
+ *
+ * ─── Class hierarchy ───
+ *   export interface RiskAnalysis  { 8 字段(主键 + 7 必填/可选) }
+ *   export interface ListRequest   { page?, pageSize?, sort? }
+ *
+ * 关系:
+ *   - ListRequest  是 listRiskAnalyses 的 query 参数
+ *   - RiskAnalysis 是 BE 返回的实体(由 analyzeRisk 副作用落库生成,或 list 查询)
+ *
+ * 调用方(view):
+ *   - purchaser/RiskAnalysis/List.vue:        RiskAnalysis + ListRequest
+ *   - purchaser/BidRecord/List.vue (弹窗):     RiskAnalysis(行内风险分析按钮)
+ *   - api/bid-record.ts:                       analyzeRisk 返回 RiskAnalysis
+ *
+ * 跨模块依赖:
+ *   - 入依赖 (谁引我): types/bid-record.ts (无直接,但 List.vue 通过 types/bid-record 间接)
+ *   - 出依赖 (我引谁): 无
+ *   - 严格单向: bid-record → risk-analysis,反之不可
+ *
+ * 字段特殊:
+ *   - riskLevel: 枚举字符串 (LOW / MEDIUM / HIGH / CRITICAL)
+ *   - rawResponse: DeepSeek 原始 JSON 字符串,长度大,UI 默认不展示
+ *   - promptVersion: 提示词版本,可追溯 AI 行为
  */
 
 /**

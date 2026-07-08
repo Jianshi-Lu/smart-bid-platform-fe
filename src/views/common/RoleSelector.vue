@@ -13,6 +13,20 @@
  *
  * 未来加角色入口的姿势:SupplierHome.vue 实现后,在 RoleSelector
  * 移除 disabled 样式即可;若加新角色(如审计员/管理员),同样加一张 el-card。
+ *
+ * ─── Class hierarchy ───
+ *   - exports: 无
+ *   - props: 无
+ *   - state: 无 (纯展示页,2 张 el-card 直接绑 $router.push)
+ *   - 跳转: $router.push('/purchaser') | $router.push('/supplier')
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): 无
+ *   - scoped (本文件 owns):
+ *     .role-selector / .role-selector-header / .role-selector-header h1
+ *     .role-selector-header .subtitle
+ *     .role-cards / .role-card / .role-card:hover (含 translateY(-2px))
+ *     .role-icon / .role-card h2 / .role-card p
  */
 import { Document, ShoppingCart } from '@element-plus/icons-vue'
 </script>
@@ -21,7 +35,7 @@ import { Document, ShoppingCart } from '@element-plus/icons-vue'
     <div class="role-selector">
         <header class="role-selector-header">
             <h1>智能招投标平台</h1>
-            <p class="subtitle">请选择您的角色入口</p>
+            <p class="subtitle">请选择入口</p>
         </header>
 
         <el-row :gutter="32" justify="center">

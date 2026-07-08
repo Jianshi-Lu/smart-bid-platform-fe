@@ -15,6 +15,26 @@
  *       本模块通过 import 引用(BidRecord 列表的"风险分析"按钮 + 弹窗)。
  *
  * 依赖关系: 不依赖任何业务文件,只 import 自有类型。
+ *
+ * ─── Class hierarchy ───
+ *   export interface BidRecord   { 8 字段(主键 + 6 必填 + 1 可选) }
+ *   export interface AddRequest  { 5 字段(4 必填 + 1 可选;不含 bidNo/bidAt) }
+ *   export interface ListRequest { page?, pageSize?, sort? }
+ *
+ * 关系:
+ *   - AddRequest   是 createBidRecord 的入参体
+ *   - ListRequest  是 listBidRecords 的 query 参数
+ *   - BidRecord    是 BE 返回的实体 (含 BE 自动算的 bidNo/bidAt)
+ *
+ * 调用方(view):
+ *   - List.vue:   BidRecord + ListRequest + RiskAnalysis (跨模块 import)
+ *   - Create.vue: AddRequest
+ *   - supplier/BidRecordCreate.vue: AddRequest + BidRecord (返回值)
+ *
+ * 注意:
+ *   - BidRecord.bidNo / bidAt: BE 在 add 时自动算/填,AddRequest 不包含,form 无输入框
+ *   - credentials(资信材料)可选,BE @Size(max=500)
+ *   - 风险分析相关类型已迁移到 risk-analysis 模块,本文件单向 import
  */
 
 /**

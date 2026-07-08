@@ -10,6 +10,22 @@ import axios from 'axios'
  *  - 第 2 层 (HTTP 框架错):HTTP 4xx/5xx,code 是 HTTP 状态码
  *
  * 调用方只需 `instanceof ApiError` 统一捕获;非 ApiError 表示网络错等不可恢复异常。
+ *
+ * ─── Class hierarchy ───
+ *   export class ApiError extends Error
+ *     readonly code: number
+ *     constructor(code, message)
+ *   export const http: AxiosInstance         // 全局 axios 实例(已挂载响应拦截器)
+ *   // http.interceptors.response.use(成功拦截, 失败拦截) — 副作用,不导出
+ *
+ * 关系:
+ *   - ApiError  ←  拦截器内部 throw (Promise.reject(new ApiError(...)))
+ *   - view layer  →  try { await apiFn() } catch (e) { if (e instanceof ApiError) ... }
+ *   - api/* 层函数   →  .post/.get/.patch<Result<T>>(url, data) .then(resp => resp.data.data)
+ *
+ * 调用约束:
+ *   - 所有 api/* 函数必须用 http (而不是直接 axios),否则不享受拦截器
+ *   - 所有 view 必须在 try/catch 中调用,否则非 ApiError 异常会被全局吞掉
  */
 export class ApiError extends Error {
     readonly code: number

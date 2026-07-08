@@ -3,12 +3,34 @@
  *
  * 通过 http 实例调用,自动应用拦截器(code != 200 转 ApiError)。
  * 调用方只需 try/catch + instanceof ApiError 判错,无需关心 envelope。
+ *
+ * ─── Class hierarchy ───
+ *   export function createInvitationForBid(data: AddRequest): Promise<InvitationForBid>
+ *   export function listInvitationForBids(query: ListRequest): Promise<PageResult<InvitationForBid>>
+ *   export function getInvitationForBid(id: number): Promise<InvitationForBid>
+ *   export function updateInvitationForBid(id: number, data: UpdateRequest): Promise<Diff<InvitationForBid>>
+ *   export function updateInvitationForBidStatus(id, status, remark?): Promise<InvitationForBid>
+ *
+ * 关系:5 个函数一对一映射 BE InvitationForBidController 的 5 个端点:
+ *   createInvitationForBid        ↔ POST   /invitation-for-bid/add
+ *   listInvitationForBids         ↔ GET    /invitation-for-bid
+ *   getInvitationForBid           ↔ GET    /invitation-for-bid/{id}
+ *   updateInvitationForBid        ↔ PATCH  /invitation-for-bid/{id}
+ *   updateInvitationForBidStatus  ↔ POST   /invitation-for-bid/status-update
+ *
+ * 调用方(view):
+ *   - purchaser/InvitationForBid/List.vue → listInvitationForBids
+ *   - purchaser/InvitationForBid/Create.vue → createInvitationForBid
+ *   - purchaser/InvitationForBid/Edit.vue → getInvitationForBid + updateInvitationForBid
+ *   - List.vue (操作列) → updateInvitationForBidStatus
+ *   - supplier/InvitationList.vue → listInvitationForBids (跨角色复用)
+ *   - supplier/BidRecordCreate.vue → getInvitationForBid (跨模块)
  */
 import { http } from '@/api/http'
 
-import type { Result, PageResult } from '@/types/common'
+import type { Diff, Result, PageResult } from '@/types/common'
 
-import type { AddRequest, InvitationForBid, ListRequest } from '@/types/invitation-for-bid'
+import type { AddRequest, BidNoticeStatus, InvitationForBid, ListRequest, UpdateRequest } from '@/types/invitation-for-bid'
 
 
 /** POST /invitation-for-bid/add 创建公告。必填: bidHandlerId / projectNo / purchaseTaskNo。 */
@@ -44,5 +66,43 @@ export function listInvitationForBids(
 export function getInvitationForBid(id: number): Promise<InvitationForBid> {
     return http
         .get<Result<InvitationForBid>>(`/invitation-for-bid/${id}`)
+        .then((resp) => resp.data.data)
+}
+
+/**
+ * PATCH /invitation-for-bid/{id} 部分更新公告。
+ *
+ * BE 端点:InvitationForBidController.patchInvitationForBid。
+ * PATCH 语义:UpdateRequest 中的 null 字段不修改。
+ * 不支持修改 status(请使用 updateInvitationForBidStatus)。
+ * 返回 Diff<InvitationForBid>(更新前后对比)。
+ */
+export function updateInvitationForBid(
+    id: number,
+    data: UpdateRequest
+): Promise<Diff<InvitationForBid>> {
+    return http
+        .patch<Result<Diff<InvitationForBid>>>(`/invitation-for-bid/${id}`, data)
+        .then((resp) => resp.data.data)
+}
+
+/**
+ * POST /invitation-for-bid/status-update 变更公告状态。
+ *
+ * BE 端点:InvitationForBidController.updateInvitationForBidStatus。
+ * body = { invitationId, status, remark? }。状态机由 BE 校验(IllegalArgumentException → 400)。
+ * 返回更新后的实体(含最新 status)。
+ */
+export function updateInvitationForBidStatus(
+    id: number,
+    status: BidNoticeStatus,
+    remark?: string
+): Promise<InvitationForBid> {
+    return http
+        .post<Result<InvitationForBid>>('/invitation-for-bid/status-update', {
+            invitationId: id,
+            status,
+            remark,
+        })
         .then((resp) => resp.data.data)
 }

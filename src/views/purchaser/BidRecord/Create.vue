@@ -23,6 +23,21 @@
  * 模块特有: bidNo 与 bidAt 由 BE 在 add 时自动算,AddRequest 不包含,form 无对应输入框,创建后从返回 entity 看到;
  * quotePrice(BigDecimal)用 el-input-number :precision="2" :step="0.01";
  * credentials(资信材料)可选,BE @Size(max=500)。
+ *
+ * ─── Class hierarchy ───
+ *   const form: reactive<AddRequest>    // 5 字段(4 必填 + 1 可选)
+ *     - invitationId: null 占位 → 提交时 ?? 0
+ *   const submitting = ref(false)
+ *   const created    = ref<BidRecord | null>(null)
+ *   async function onSubmit()
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: createBidRecord(data)
+ *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
+ *   - scoped (本文件 owns): .create-form-card / .create-result-card
  */
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'

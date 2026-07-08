@@ -3,6 +3,25 @@
  *
  * 字段名严格对齐 BE 的 AddRequest.java / BidHandlerInfo.java (V18 重命名后)。
  * BE 修改字段后必须同步更新本文件;FE 不允许自行调整字段命名。
+ *
+ * ─── Class hierarchy ───
+ *   export interface BidHandlerInfo  { 5 字段(主键 + 4 必填) }
+ *   export interface AddRequest      { 4 字段(全必填) }
+ *   export interface ListRequest     { page?, pageSize?, sort? }
+ *
+ * 关系:
+ *   - AddRequest    是 createBidHandlerInfo 的入参体
+ *   - ListRequest   是 listBidHandlers 的 query 参数
+ *   - BidHandlerInfo 是 BE 返回的实体
+ *
+ * 调用方(view):
+ *   - List.vue:   BidHandlerInfo + ListRequest
+ *   - Create.vue: AddRequest
+ *
+ * 注意:
+ *   - 4 字段全必填,无日期/无数字字段
+ *   - maxlength 对齐 BE @Size(handlerName:50 / companyName:100 / departmentName:100 / targetEmail:255)
+ *   - BE 在 add 后异步发送通知邮件到 targetEmail
  */
 
 /**

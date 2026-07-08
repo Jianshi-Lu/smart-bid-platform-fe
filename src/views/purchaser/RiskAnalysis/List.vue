@@ -30,6 +30,19 @@
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
+ * ─── Class hierarchy ───
+ *   const rows / total / currentPage / pageSize=10 / loading (ref)
+ *   function load(page) / onPageChange(page)
+ *   const riskLevelType: Record<string, ElementTagType>   // LOW/MEDIUM/HIGH/CRITICAL → tag 色
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: listRiskAnalyses(query)        // 单向: 风险模块的读端点
+ *   - 跨组件导航: $router.push('/')
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - scoped (本文件 owns): 无
+ *
  * 模块特有: 8 列展示(含 riskLevel 用 el-tag 颜色映射);
  * summary / suggestions / promptVersion 用 show-overflow-tooltip 截断;
  * analyzedAt 用 inline formatTime 处理 ISO-8601;

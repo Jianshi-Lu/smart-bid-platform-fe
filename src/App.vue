@@ -10,6 +10,23 @@
  * 视图组件位置约定:
  *   src/views/{Feature}/{Action}.vue
  *   例:src/views/InvitationForBid/List.vue
+ *
+ * ─── Class hierarchy ───
+ *   - exports: 无
+ *   - props: 无
+ *   - state: 无
+ *   - 渲染: 顶部 header(品牌区 router-link to="/") + 主区域 <router-view />
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): 无
+ *   - scoped (本文件 owns):
+ *     .app / .app-header (position:sticky, 56px 高, z-index:100)
+ *     .app-header-inner (max-width 1200 居中)
+ *     .app-brand-link / .app-brand-link:hover (主色变 #409eff)
+ *     .app-brand-link:hover .app-brand-icon
+ *     .app-brand-icon
+ *     .app-main (min-height: calc(100vh - 56px))
+ *   - 关键: app-main 高度预留 app-header 高度,避免内容区被遮挡
  */
 import { Document } from '@element-plus/icons-vue'
 </script>

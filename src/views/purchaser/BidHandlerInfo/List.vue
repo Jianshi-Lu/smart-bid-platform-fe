@@ -20,6 +20,19 @@
  *
  * 模块特有: 5 列(ID/姓名/公司/部门/邮箱);
  * pageSize=10 固定,显式覆盖 BE 默认的 3(让 3 模块列表行为一致)。
+ *
+ * ─── Class hierarchy ───
+ *   const rows / total / currentPage / loading (ref)
+ *   const pageSize = 10 (固定常量,覆盖 BE 默认 3)
+ *   function load(page) / onPageChange(page)
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: listBidHandlers(query)
+ *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - scoped (本文件 owns): 无
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'

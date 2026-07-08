@@ -45,6 +45,25 @@
  *   - credentials: 资信材料(可选, BE @Size(max=500))
  *
  * 校验: 全部交给 BE (@NotNull/@NotBlank/@Size), FE 不重复。
+ *
+ * ─── Class hierarchy ───
+ *   const route = useRoute();  const router = useRouter()
+ *   const invitationId = Number(route.query.invitationId)   // 无效 → 跳列表
+ *   const selectedInvitation = ref<InvitationForBid | null>(null)  // 选中公告
+ *   const loadingSel = ref(false)
+ *   const form: reactive<AddRequest>    // 4 字段(去掉 invitationId,提交时拼回去)
+ *   const submitting = ref(false)
+ *   const created = ref<BidRecord | null>(null)
+ *   onMounted → loadSelected()  →  getInvitationForBid(id)
+ *   async function onSubmit()           // 1) 提交 2) 跳列表
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: getInvitationForBid + createBidRecord   // 跨模块
+ *   - 路由: useRoute() 取 query.invitationId; useRouter() 跳列表
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
+ *   - scoped (本文件 owns): .selected-section (选中公告 el-descriptions 块) / .create-result-card
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

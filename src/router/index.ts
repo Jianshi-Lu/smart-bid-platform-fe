@@ -31,6 +31,36 @@
  *
  * 未来加投标方业务的姿势: 在 routes 数组追加 /supplier/xxx 路径,
  * Supplier/Home.vue 也可改成嵌套布局(layout + 子路由)。
+ *
+ * ─── Class hierarchy ───
+ *   const routes: RouteRecordRaw[]   // 14 条路由(13 业务 + 1 通配 404)
+ *   export const router = createRouter({ history, routes })
+ *
+ * 关系:
+ *   - 路由表 1:1 映射 view 组件:
+ *     /                                → common/RoleSelector.vue
+ *     /purchaser                       → purchaser/Home.vue
+ *     /purchaser/invitation/{list,create,edit/:id}  → 3 个 view
+ *     /purchaser/bid-handler-info/{list,create}     → 2 个 view
+ *     /purchaser/bid-record/{list,create}           → 2 个 view
+ *     /purchaser/risk-analysis/list                 → 1 个 view
+ *     /supplier                       → supplier/Home.vue
+ *     /supplier/invitation/list       → supplier/InvitationList.vue
+ *     /supplier/bid-record/create     → supplier/BidRecordCreate.vue
+ *     /:pathMatch(.*)*                → common/NotFound.vue
+ *
+ *   - meta.title: 浏览器 tab 标题(未接入 document.title,保留)
+ *   - 路由名: kebab-case,前缀对齐角色
+ *
+ * 命名约束:
+ *   - URL 前缀对齐角色:purchaser / supplier
+ *   - 业务子路径对齐模块目录名(kebab-case):
+ *     /purchaser/invitation/*        (URL) ↔  InvitationForBid (BE entity)
+ *     /purchaser/bid-handler-info/*  ↔  bid-handler-info
+ *     /purchaser/bid-record/*        ↔  bid-record
+ *     /purchaser/risk-analysis/*     ↔  risk-analysis
+ *
+ * 启动入口: src/main.ts → app.use(router)
  */
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 
@@ -58,6 +88,12 @@ const routes: RouteRecordRaw[] = [
         name: 'purchaser-invitation-create',
         component: () => import('@/views/purchaser/InvitationForBid/Create.vue'),
         meta: { title: '创建公告' },
+    },
+    {
+        path: '/purchaser/invitation/edit/:id',
+        name: 'purchaser-invitation-edit',
+        component: () => import('@/views/purchaser/InvitationForBid/Edit.vue'),
+        meta: { title: '编辑公告' },
     },
     {
         path: '/purchaser/bid-handler-info/list',

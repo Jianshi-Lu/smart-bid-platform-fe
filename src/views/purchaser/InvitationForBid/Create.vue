@@ -22,6 +22,23 @@
  * 模块特有: 3 必填(bidHandlerId/projectNo/purchaseTaskNo) + 15 可选;
  * 含 3 个 el-date-picker,value-format="YYYY-MM-DDTHH:mm:ss" 匹配 BE ISO-8601;
  * deposit(BigDecimal)用 el-input-number :precision="2" :step="0.01"。
+ *
+ * ─── Class hierarchy ───
+ *   const form: reactive<AddRequest>    // 18 字段绑定到 v-model
+ *     - bidHandlerId: null 占位,提交时 ?? 0 (el-input-number 对 0 展示"空")
+ *   const submitting = ref(false)        // 提交按钮 loading
+ *   const created    = ref<InvitationForBid | null>(null)  // BE 返回实体展示
+ *   async function onSubmit()            // 1) 置 submitting 2) 调 api 3) 提示/展示
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: createInvitationForBid(data)
+ *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
+ *   - scoped (本文件 owns):
+ *     .create-form-card    (max-width: 860px; 居中)
+ *     .create-result-card  (max-width: 860px; margin-top: 16px)
  */
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'

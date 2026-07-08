@@ -12,6 +12,23 @@
  * 未来加投标方业务的姿势(在 entries 数组追加对象):
  *   { title: '...', description: '...', path: '/supplier/xxx', icon: ... }
  *   例: 我创建的投标记录、我的风险分析、我的中标项目等
+ *
+ * ─── Class hierarchy ───
+ *   interface HomeEntry { title, description, path, icon }
+ *   const entries: HomeEntry[]                   // 当前 1 项,数组形态便于扩展
+ *   - exports: 无
+ *   - props: 无
+ *   - 跳转: 直接调 $router.push (template 内联) — 无业务方法
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): 无 (本文件不引用 .page*)
+ *   - scoped (本文件 owns):
+ *     .home / .home h1 / .home .subtitle
+ *     .home-card / .home-card:hover (含 translateY(-2px) 抬升效果)
+ *     .card-header / .card-header h3
+ *     .description
+ *     .home-footer
+ *   - el-card shadow="hover" 替代手写 box-shadow 抬升
  */
 import type { Component } from 'vue'
 import { Document } from '@element-plus/icons-vue'

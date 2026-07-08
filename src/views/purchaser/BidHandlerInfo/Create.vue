@@ -23,6 +23,20 @@
  * 模块特有: 4 字段全必填,无日期/无数字字段;
  * maxlength 对齐 BE @Size(handlerName:50 / companyName:100 / departmentName:100 / targetEmail:255);
  * 创建后 BE 异步发邮件到 targetEmail,失败不影响创建结果。
+ *
+ * ─── Class hierarchy ───
+ *   const form: reactive<AddRequest>    // 4 字段(全必填)
+ *   const submitting = ref(false)
+ *   const created    = ref<BidHandlerInfo | null>(null)
+ *   async function onSubmit()
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: createBidHandlerInfo(data)
+ *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
+ *   - scoped (本文件 owns): .create-form-card / .create-result-card
  */
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'

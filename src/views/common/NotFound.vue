@@ -6,6 +6,19 @@
  *   - 明确告知"资源不存在",区别于"系统异常"和"权限不足"
  *   - 显示用户访问的完整路径,方便定位错误 URL
  *   - 主操作 = 返回首页(单一出口,避免迷路)
+ *
+ * ─── Class hierarchy ───
+ *   const route = useRoute();  const router = useRouter()
+ *   - exports: 无
+ *   - props: 无
+ *   - state: 无
+ *   - 跳转: router.push('/') (主按钮:返回首页)
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): 无
+ *   - scoped (本文件 owns):
+ *     .not-found / .not-found h1 (大号 404 文字)
+ *     .not-found .title / .not-found .path-hint
  */
 import { useRoute, useRouter } from 'vue-router'
 

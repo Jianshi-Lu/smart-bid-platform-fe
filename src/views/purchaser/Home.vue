@@ -2,82 +2,101 @@
 /**
  * 招标方首页(/purchaser)。
  *
- * 文件职责: 招标方角色的入口首页,展示 7 个业务模块(公告 / 经办人 / 投标 / 风险分析)。
+ * 设计: 按业务模块分组,每张卡片 = 1 个模块,卡内用 router-link 列出该模块下
+ * 的所有动作(列表/创建等)。整张卡不绑定跳转,只触发 hover 阴影效果。
  *
- * 设计原则:
- *   1. entries 配置数组驱动,加新模块只需往数组里加一个对象,模板不动
- *   2. el-row 响应式列数(:xs/:sm/:md/:lg),1/2/3/4 列自动 reflow
- *   3. 卡片整体可点击跳转,鼠标 hover 抬升阴影
- *
- * 当前 7 entries(3 模块各 2 动作 + 风险分析):
+ * 当前 4 groups:
  *   - 招标公告:列表 + 创建
  *   - 招标经办人:列表 + 创建
  *   - 投标记录:列表 + 创建
  *   - 风险分析:仅列表(由投标列表的"风险分析"按钮触发生成)
  *
- * 所有路径以 /purchaser 为前缀(/purchaser/invitation/list 等),
- * 与 router 路由表对齐。
+ * 加新模块: 往 groups 数组追加一个对象,模板无需改动。
  *
- * 未来加新模块的姿势(在 entries 数组追加 1-2 个对象):
- *   列表+创建双动作模块: 追加 2 个对象 (如 {title, path:'/purchaser/xxx/list'} + {title, path:'/purchaser/xxx/create'})
- *   只读模块: 追加 1 个对象 (如 {title:'xxx列表', path:'/purchaser/xxx/list', icon:...})
+ * ─── Class hierarchy ───
+ *   interface HomeAction { label, path, icon }
+ *   interface HomeGroup  { title, description, icon, actions[] }
+ *   const groups: HomeGroup[]                    // 4 个模块的静态数据
+ *   - exports: 无(无 defineExpose / 无 emit)
+ *   - props: 无
+ *   - 不调用任何 api/ 不订阅 store
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): 无 (本文件不引用 .page*)
+ *   - scoped (本文件 owns):
+ *     .home / .home h1 / .home .subtitle / .group-card / .group-card:hover
+ *     .group-header / .group-icon / .group-title / .group-desc
+ *     .action-list / .action-item / .action-item:hover / .action-item:hover .arrow / .arrow
+ *   - 关键: el-row default display:flex + el-col default align-items:stretch
+ *     (来自 Element Plus 内部 CSS) → 4 张卡等高,本文件无需自定义等高逻辑。
+ *     el-card__body 用 display:flex; flex-direction:column + action-list margin-top:auto
+ *     让子项始终贴卡底 (无 height:100% 强制,避免内部内容被裁剪)。
  */
 import type { Component } from 'vue'
-import { DataAnalysis, Document, List, Plus, User, UserFilled } from '@element-plus/icons-vue'
+import {
+    ArrowRight,
+    DataAnalysis,
+    Document,
+    List,
+    Plus,
+    User,
+} from '@element-plus/icons-vue'
 
-interface HomeEntry {
-    /** 卡片主标题 */
-    title: string
-    /** 卡片描述(1-2 句话说明用途) */
-    description: string
-    /** 点击后跳转的路径 */
+interface HomeAction {
+    /** 子项标签, e.g. '公告列表' */
+    label: string
+    /** 子项跳转路径 */
     path: string
-    /** 卡片图标(@element-plus/icons-vue) */
+    /** 子项图标 */
     icon: Component
 }
 
-const entries: HomeEntry[] = [
+interface HomeGroup {
+    /** 模块主标题, e.g. '招标公告' */
+    title: string
+    /** 模块描述(1 句话说明模块用途) */
+    description: string
+    /** 模块主图标(显示在卡片 header) */
+    icon: Component
+    /** 模块下所有动作(至少 1 个) */
+    actions: HomeAction[]
+}
+
+const groups: HomeGroup[] = [
     {
-        title: '公告列表',
-        description: '查看所有招标公告,支持分页查询与状态过滤',
-        path: '/purchaser/invitation/list',
+        title: '招标公告',
+        description: '查看/管理/创建招标公告',
         icon: Document,
+        actions: [
+            { label: '公告列表', path: '/purchaser/invitation/list',   icon: List },
+            { label: '创建公告', path: '/purchaser/invitation/create', icon: Plus },
+        ],
     },
     {
-        title: '创建公告',
-        description: '新建一条招标公告,填写 18 个业务字段',
-        path: '/purchaser/invitation/create',
-        icon: Plus,
-    },
-    {
-        title: '经办人列表',
-        description: '查看所有招标经办人',
-        path: '/purchaser/bid-handler-info/list',
+        title: '招标经办人',
+        description: '管理招标经办人信息',
         icon: User,
+        actions: [
+            { label: '经办人列表', path: '/purchaser/bid-handler-info/list',   icon: List },
+            { label: '新建经办人', path: '/purchaser/bid-handler-info/create', icon: Plus },
+        ],
     },
     {
-        title: '新建经办人',
-        description: '创建一条招标经办人记录',
-        path: '/purchaser/bid-handler-info/create',
-        icon: UserFilled,
-    },
-    {
-        title: '投标列表',
-        description: '查看所有投标记录',
-        path: '/purchaser/bid-record/list',
+        title: '投标记录',
+        description: '查看/管理/创建投标记录',
         icon: List,
+        actions: [
+            { label: '投标列表', path: '/purchaser/bid-record/list',   icon: List },
+            { label: '新建投标', path: '/purchaser/bid-record/create', icon: Plus },
+        ],
     },
     {
-        title: '新建投标',
-        description: '为某条招标公告创建一条投标记录',
-        path: '/purchaser/bid-record/create',
-        icon: Plus,
-    },
-    {
-        title: '风险分析列表',
-        description: '查看所有 AI 风险分析历史结果',
-        path: '/purchaser/risk-analysis/list',
+        title: '风险分析',
+        description: 'AI 风险分析历史结果',
         icon: DataAnalysis,
+        actions: [
+            { label: '风险分析列表', path: '/purchaser/risk-analysis/list', icon: List },
+        ],
     },
 ]
 </script>
@@ -89,19 +108,38 @@ const entries: HomeEntry[] = [
 
         <el-row :gutter="20">
             <el-col
-                v-for="(entry, i) in entries"
+                v-for="(g, i) in groups"
                 :key="i"
                 :xs="24"
                 :sm="12"
-                :md="8"
+                :md="12"
                 :lg="6"
             >
-                <el-card class="home-card" shadow="hover" @click="$router.push(entry.path)">
-                    <div class="card-header">
-                        <el-icon :size="24"><component :is="entry.icon" /></el-icon>
-                        <h3>{{ entry.title }}</h3>
+                <el-card class="group-card" shadow="hover">
+                    <div class="group-header">
+                        <el-icon :size="24" class="group-icon">
+                            <component :is="g.icon" />
+                        </el-icon>
+                        <h3>{{ g.title }}</h3>
                     </div>
-                    <p class="description">{{ entry.description }}</p>
+                    <p class="group-desc">{{ g.description }}</p>
+                    <el-divider class="group-divider" />
+                    <div class="action-list">
+                        <router-link
+                            v-for="(a, j) in g.actions"
+                            :key="j"
+                            :to="a.path"
+                            class="action-item"
+                        >
+                            <el-icon class="action-icon">
+                                <component :is="a.icon" />
+                            </el-icon>
+                            <span class="action-label">{{ a.label }}</span>
+                            <el-icon class="action-arrow">
+                                <ArrowRight />
+                            </el-icon>
+                        </router-link>
+                    </div>
                 </el-card>
             </el-col>
         </el-row>
@@ -122,30 +160,71 @@ const entries: HomeEntry[] = [
     color: #999;
     margin: 0 0 24px;
 }
-.home-card {
-    cursor: pointer;
-    margin-bottom: 20px;
-    transition: transform 0.2s;
+.group-card {
+    height: 100%;
 }
-.home-card:hover {
-    transform: translateY(-2px);
+.group-card :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
 }
-.card-header {
+.group-header {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
-    margin-bottom: 12px;
 }
-.card-header h3 {
+.group-icon {
+    color: var(--el-color-primary);
+}
+.group-header h3 {
     margin: 0;
     font-size: 18px;
 }
-.description {
-    color: #666;
-    font-size: 14px;
+.group-desc {
+    color: #999;
+    font-size: 13px;
     line-height: 1.5;
-    margin: 0;
-    text-align: center;
+    margin: 8px 0 0;
+}
+.group-divider {
+    margin: 12px 0 8px;
+}
+.action-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: auto;
+}
+.action-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.15s, color 0.15s;
+}
+.action-item:hover {
+    background-color: var(--el-color-primary-light-9);
+    color: var(--el-color-primary);
+}
+.action-icon {
+    color: #666;
+    font-size: 16px;
+}
+.action-item:hover .action-icon {
+    color: var(--el-color-primary);
+}
+.action-label {
+    flex: 1;
+    font-size: 14px;
+}
+.action-arrow {
+    color: #ccc;
+    font-size: 14px;
+    transition: transform 0.15s, color 0.15s;
+}
+.action-item:hover .action-arrow {
+    color: var(--el-color-primary);
+    transform: translateX(2px);
 }
 </style>

@@ -3,6 +3,33 @@
  *
  * 字段名严格对齐 BE 的 AddRequest.java / InvitationForBid.java (V18 重命名后)。
  * BE 修改字段后必须同步更新本文件;FE 不允许自行调整字段命名。
+ *
+ * ─── Class hierarchy ───
+ *   export type BidNoticeStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'AWARDED' | 'CANCELLED'
+ *   export interface InvitationForBid  { 20 字段, 1 必填主键 + 3 必填业务 + 16 可选 + BE 自动填 3 字段 }
+ *   export interface AddRequest        { 3 必填 + 15 可选 (18 字段,无 BE 自动填字段) }
+ *   export interface UpdateRequest     { 16 字段全可选 (PATCH null=不修改;不包含 status) }
+ *   export interface ListRequest       { page?, pageSize?, sort? }
+ *
+ * 关系:
+ *   - AddRequest    是 createInvitationForBid 的入参体
+ *   - UpdateRequest 是 updateInvitationForBid 的入参体(PATCH 语义)
+ *   - ListRequest   是 listInvitationForBids 的 query 参数
+ *   - InvitationForBid  是 BE 返回的实体 (create/list/get/patch/status-update 全部用)
+ *   - BidNoticeStatus  是 InvitationForBid.status 的枚举类型
+ *
+ * 调用方(view):
+ *   - List.vue: InvitationForBid + BidNoticeStatus + ListRequest
+ *   - Create.vue: AddRequest
+ *   - Edit.vue: UpdateRequest
+ *   - List.vue 操作列: BidNoticeStatus
+ *   - supplier/InvitationList.vue: InvitationForBid + BidNoticeStatus + ListRequest
+ *   - supplier/BidRecordCreate.vue: InvitationForBid (加载选中公告)
+ *
+ * 注意:
+ *   - status 不在 UpdateRequest 中 — 修改状态走独立端点 updateInvitationForBidStatus
+ *   - deposit 是 BigDecimal,JSON 序列化为 number
+ *   - 3 个 deadline 字段是 ISO-8601 字符串
  */
 export type BidNoticeStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'AWARDED' | 'CANCELLED'
 
@@ -38,6 +65,31 @@ export interface AddRequest {
     bidHandlerId: number           // 必填
     projectNo: string              // 必填
     purchaseTaskNo: string         // 必填
+    platformCategory?: string
+    tenderProcess?: string
+    tenderMethod?: string
+    purchaseMethod?: string
+    isFixedPrice?: boolean
+    hasDocumentFee?: boolean
+    deposit?: number
+    creditReportRequired?: boolean
+    registrationDeadline?: string
+    technicalTenderDeadline?: string
+    businessTenderDeadline?: string
+    notes?: string
+    purchaseCompany?: string
+    purchaseDepartment?: string
+    tenderingParty?: string
+}
+
+/**
+ * 部分更新请求 DTO（PATCH 语义，16 字段全可选，null 字段表示"不修改"）。
+ * 不支持修改 status（请使用 POST /invitation-for-bid/status-update）。
+ */
+export interface UpdateRequest {
+    bidHandlerId?: number
+    projectNo?: string
+    purchaseTaskNo?: string
     platformCategory?: string
     tenderProcess?: string
     tenderMethod?: string

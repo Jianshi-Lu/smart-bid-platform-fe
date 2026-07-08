@@ -3,6 +3,20 @@
  *
  * 通过 http 实例调用,自动应用拦截器(code != 200 转 ApiError)。
  * 调用方只需 try/catch + instanceof ApiError 判错,无需关心 envelope。
+ *
+ * ─── Class hierarchy ───
+ *   export function createBidHandlerInfo(data: AddRequest): Promise<BidHandlerInfo>
+ *   export function listBidHandlers(query: ListRequest): Promise<PageResult<BidHandlerInfo>>
+ *
+ * 关系:2 个函数一对一映射 BE BidHandlerInfoController 的 2 个端点:
+ *   createBidHandlerInfo  ↔ POST /bid-handler-info/add
+ *   listBidHandlers       ↔ GET  /bid-handler-info
+ *
+ * 调用方(view):
+ *   - purchaser/BidHandlerInfo/List.vue   → listBidHandlers
+ *   - purchaser/BidHandlerInfo/Create.vue → createBidHandlerInfo
+ *
+ * 业务注意: BE 在 add 后会异步发送通知邮件到 targetEmail(失败不影响主流程)。
  */
 import { http } from '@/api/http'
 

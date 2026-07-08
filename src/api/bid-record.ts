@@ -21,6 +21,21 @@
  *           前端同步分离,bid-record 通过 import 引用,严格单向依赖)。
  *
  * 错误处理: 所有调用都通过拦截器统一包装 ApiError,view 只需 try/catch + instanceof ApiError。
+ *
+ * ─── Class hierarchy ───
+ *   export function createBidRecord(data: AddRequest): Promise<BidRecord>
+ *   export function listBidRecords(query: ListRequest): Promise<PageResult<BidRecord>>
+ *   export function analyzeRisk(id: number): Promise<RiskAnalysis>            // 跨模块: 副作用落库 risk_analysis
+ *
+ * 关系:3 个函数一对一映射 BE BidRecordController 的 3 个端点:
+ *   createBidRecord  ↔ POST /bid-record/add
+ *   listBidRecords   ↔ GET  /bid-record
+ *   analyzeRisk      ↔ POST /bid-record/analyze-risk/{id}     (BE 同步 DeepSeek → 落库 risk_analysis)
+ *
+ * 调用方(view):
+ *   - purchaser/BidRecord/List.vue   → listBidRecords + analyzeRisk (行内按钮)
+ *   - purchaser/BidRecord/Create.vue → createBidRecord
+ *   - supplier/BidRecordCreate.vue   → createBidRecord (跨角色)
  */
 import { http } from '@/api/http'
 

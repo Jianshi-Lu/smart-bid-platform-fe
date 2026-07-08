@@ -21,12 +21,34 @@
  * 模块特有: 7 列展示(含 status 用 el-tag 按 BidNoticeStatus 映射颜色);
  * createdAt 用 inline formatTime 处理 ISO-8601 字符串;
  * pageSize=10 固定(覆盖 BE 默认)。
+ *
+ * ─── Class hierarchy ───
+ *   const rows        = ref<InvitationForBid[]>([])         // 当前页数据
+ *   const total       = ref(0)                              // 总记录数
+ *   const currentPage = ref(1)                              // 当前页号
+ *   const pageSize    = 10                                  // 常量(不开放)
+ *   const loading     = ref(false)                          // v-loading 状态
+ *   const statusType: Record<BidNoticeStatus, ElementTagType>   // 状态色映射
+ *   function load(page)         // 触发分页请求
+ *   function onPageChange(page) // el-pagination 回调
+ *   function formatTime(iso)   // ISO-8601 → 'YYYY-MM-DD HH:mm'
+ *   - exports: 无
+ *   - props: 无
+ *   - api 依赖: listInvitationForBids(query)
+ *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *
+ * ─── Style dependencies ───
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - scoped (本文件 owns): 无 (<style scoped> 块已删,所有样式由 global 提供)
  */
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
-import { listInvitationForBids } from '@/api/invitation-for-bid'
+import { listInvitationForBids, updateInvitationForBidStatus } from '@/api/invitation-for-bid'
 import type { BidNoticeStatus, InvitationForBid } from '@/types/invitation-for-bid'
+
+const router = useRouter()
 
 // ——— 状态机 ———
 const rows = ref<InvitationForBid[]>([])
@@ -34,6 +56,15 @@ const total = ref(0)
 const currentPage = ref(1)
 const pageSize = 10                 // 固定,不开放
 const loading = ref(false)
+
+// ——— 状态修改弹窗 ———
+const statusDialogVisible = ref(false)
+const statusTarget = ref<InvitationForBid | null>(null)
+const selectedStatus = ref<BidNoticeStatus>('DRAFT')
+const statusSubmitting = ref(false)
+
+// 全部可选状态(用于下拉)
+const allStatuses: BidNoticeStatus[] = ['DRAFT', 'PUBLISHED', 'CLOSED', 'AWARDED', 'CANCELLED']
 
 // ——— 生命周期 ———
 onMounted(() => {
@@ -80,6 +111,47 @@ const statusType: Record<BidNoticeStatus, '' | 'info' | 'primary' | 'success' | 
 function formatTime(iso?: string): string {
   return iso ? iso.replace('T', ' ').substring(0, 16) : '-'
 }
+
+// ——— 编辑按钮:跳转到编辑页 ———
+function onEdit(row: InvitationForBid) {
+  router.push(`/purchaser/invitation/edit/${row.invitationId}`)
+}
+
+// ——— 修改状态按钮:打开弹窗 ———
+function onChangeStatus(row: InvitationForBid) {
+  statusTarget.value = row
+  selectedStatus.value = row.status ?? 'DRAFT'
+  statusDialogVisible.value = true
+}
+
+// ——— 状态弹窗取消 ———
+function onStatusCancel() {
+  statusDialogVisible.value = false
+  statusTarget.value = null
+}
+
+// ——— 状态弹窗确认 ———
+async function onStatusConfirm() {
+  if (!statusTarget.value) return
+  const targetId = statusTarget.value.invitationId
+  const newStatus = selectedStatus.value
+  statusSubmitting.value = true
+  try {
+    await updateInvitationForBidStatus(targetId, newStatus)
+    ElMessage.success(`ID=${targetId} 状态已更新为 ${newStatus}`)
+    statusDialogVisible.value = false
+    statusTarget.value = null
+    // 刷新当前页
+    await load(currentPage.value)
+  } catch (e) {
+    const msg = e instanceof ApiError
+        ? `[${e.code}] ${e.message}`
+        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    ElMessage.error(msg)
+  } finally {
+    statusSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -123,6 +195,13 @@ function formatTime(iso?: string): string {
           {{ formatTime(row.createdAt) }}
         </template>
       </el-table-column>
+
+      <el-table-column label="操作" width="200" fixed="right">
+        <template #default="{ row }: { row: InvitationForBid }">
+          <el-button size="small" type="primary" @click="onEdit(row)">编辑</el-button>
+          <el-button size="small" type="warning" @click="onChangeStatus(row)">修改状态</el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
         <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
@@ -141,5 +220,43 @@ function formatTime(iso?: string): string {
                 @current-change="onPageChange"
             />
         </div>
+
+        <!-- 状态修改弹窗 -->
+        <el-dialog
+            v-model="statusDialogVisible"
+            title="修改公告状态"
+            width="420px"
+            @close="onStatusCancel"
+        >
+            <div v-if="statusTarget" style="padding: 0 8px;">
+                <p style="margin: 0 0 12px; color: #606266;">
+                    公告 ID: <strong>{{ statusTarget.invitationId }}</strong>
+                    ，项目编号: <strong>{{ statusTarget.projectNo }}</strong>
+                </p>
+                <el-form label-width="80px">
+                    <el-form-item label="当前状态">
+                        <el-tag v-if="statusTarget.status" :type="statusType[statusTarget.status]" disable-transitions>
+                            {{ statusTarget.status }}
+                        </el-tag>
+                    </el-form-item>
+                    <el-form-item label="新状态">
+                        <el-select v-model="selectedStatus" style="width: 100%;">
+                            <el-option
+                                v-for="s in allStatuses"
+                                :key="s"
+                                :label="s"
+                                :value="s"
+                            />
+                        </el-select>
+                    </el-form-item>
+                </el-form>
+            </div>
+            <template #footer>
+                <el-button @click="onStatusCancel">取消</el-button>
+                <el-button type="primary" :loading="statusSubmitting" @click="onStatusConfirm">
+                    {{ statusSubmitting ? '提交中...' : '确认' }}
+                </el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>

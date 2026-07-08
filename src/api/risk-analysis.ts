@@ -19,6 +19,18 @@
  *   - AI 触发分析走 BidRecordController.analyzeRisk(副作用为 RiskAnalysisService.persist)
  *
  * 错误处理: 所有调用都通过拦截器统一包装 ApiError,view 只需 try/catch + instanceof ApiError。
+ *
+ * ─── Class hierarchy ───
+ *   export function listRiskAnalyses(query: ListRequest): Promise<PageResult<RiskAnalysis>>
+ *
+ * 关系:1 个函数一对一映射 BE RiskAnalysisController 的 1 个端点:
+ *   listRiskAnalyses  ↔ GET /risk-analysis
+ *
+ * 调用方(view):
+ *   - purchaser/RiskAnalysis/List.vue → listRiskAnalyses
+ *
+ * 注意: 写入由 BidRecordController.analyzeRisk 副作用落库完成,
+ *       本模块不暴露 POST/PATCH/DELETE,前端模块边界与 BE 严格对齐。
  */
 import { http } from '@/api/http'
 

@@ -8,6 +8,15 @@ export interface Result<T> {
 }
 
 /**
+ * BE Diff<T> DTO。PATCH 端点返回"更新前后对比"。
+ * 镜像 io.gitee.lujianshi.bidwinningbackend.dto.common.Diff<T>。
+ */
+export interface Diff<T> {
+    before: T
+    after: T
+}
+
+/**
  * PageHelper 分页响应(3 个 list 端点共享: invitation-for-bid / bid-handler-info / bid-record)。
  *
  * 字段来源: com.github.pagehelper.PageInfo<T> (pagehelper 6.1.1)
@@ -21,6 +30,21 @@ export interface Result<T> {
  *     仍保留 is → JSON 键仍是 isFirstPage / hasPreviousPage(不是 firstPage / previousPage)
  *   - getNavigatepageNums 的 "page" 在 getter 中**保持小写**,
  *     JSON 键为 navigatepageNums (不是 navigatePageNums)
+ *
+ * ─── Class hierarchy ───
+ *   export interface Result<T>     { code, message, data: T }       // BE 业务信封
+ *   export interface Diff<T>       { before: T, after: T }          // PATCH 对比
+ *   export interface PageResult<T> { 17 字段(见下) }                 // PageHelper 分页
+ *
+ * 关系:
+ *   - api/* 函数:  http.post<Result<InvitationForBid>>(url) → resp.data.data
+ *   - view layer: await listFn() → PageResult<InvitationForBid> (envelope 已拆)
+ *   - 不被 view 直接 import (中间层 api/* 已拆 envelope)
+ *
+ * 泛型约束:
+ *   - Result<T>    的 T 通常是 entity(InvitationForBid) 或 PageResult<Entity>
+ *   - Diff<T>      的 T 是 entity(目前仅 InvitationForBid 使用)
+ *   - PageResult<T> 的 T 是 entity list(分页项类型)
  */
 export interface PageResult<T> {
     // ——— 来自 PageSerializable<T> (父类) ———
