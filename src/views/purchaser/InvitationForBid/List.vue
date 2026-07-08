@@ -13,13 +13,13 @@
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
  *   ⑧ loading=false → <el-table> 渲染 7 列 + <el-pagination :total>
  *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → onPageChange(page) → load(page)
+ *   ⑩ @current-change → 直接绑 load(page) 触发请求
  *   ⑪ 回到 ③ 循环
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
  * 模块特有: 7 列展示(含 status 用 el-tag 按 BidNoticeStatus 映射颜色);
- * createdAt 用 inline formatTime 处理 ISO-8601 字符串;
+ * createdAt 用 formatTime 处理 ISO-8601 字符串;
  * pageSize=10 固定(覆盖 BE 默认)。
  *
  * ─── Class hierarchy ───
@@ -28,18 +28,26 @@
  *   const currentPage = ref(1)                              // 当前页号
  *   const pageSize    = 10                                  // 常量(不开放)
  *   const loading     = ref(false)                          // v-loading 状态
- *   const statusType: Record<BidNoticeStatus, ElementTagType>   // 状态色映射
- *   function load(page)         // 触发分页请求
- *   function onPageChange(page) // el-pagination 回调
- *   function formatTime(iso)   // ISO-8601 → 'YYYY-MM-DD HH:mm'
+ *   const statusDialogVisible = ref(false)                  // 状态修改弹窗开关
+ *   const statusTarget        = ref<InvitationForBid|null>(null)  // 当前编辑目标行
+ *   const selectedStatus      = ref<BidNoticeStatus>('DRAFT') // 弹窗内下拉选中值
+ *   const statusSubmitting    = ref(false)                  // 弹窗提交中标志
+ *   const allStatuses: BidNoticeStatus[]                     // 弹窗下拉枚举项
+ *   function load(page)             // 触发分页请求(直接绑 el-pagination)
+ *   function onEdit(row)            // 跳转编辑页
+ *   function onChangeStatus(row)    // 打开状态修改弹窗(填入目标与初始值)
+ *   function onStatusCancel()       // 关闭弹窗并清理
+ *   function onStatusConfirm()      // 提交新状态,关闭并 reload 当前页
  *   - exports: 无
  *   - props: 无
- *   - api 依赖: listInvitationForBids(query)
- *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *   - api 依赖: listInvitationForBids(query), updateInvitationForBidStatus(id, status)
+ *   - 跨组件导航: useRouter().push() (返回首页 + 跳转编辑页)
+ *   - 共享常量: BID_NOTICE_STATUS_TYPE (src/shared/utils/el-tag.ts)
+ *   - 共享工具: formatTime (src/shared/utils/format.ts)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions
- *   - scoped (本文件 owns): 无 (<style scoped> 块已删,所有样式由 global 提供)
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
+ *   - scoped (本文件 owns): 无
  */
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -47,6 +55,8 @@ import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { listInvitationForBids, updateInvitationForBidStatus } from '@/api/invitation-for-bid'
 import type { BidNoticeStatus, InvitationForBid } from '@/types/invitation-for-bid'
+import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
+import { formatTime } from '@/shared/utils/format'
 
 const router = useRouter()
 
@@ -91,25 +101,6 @@ async function load(page: number) {
   } finally {
     loading.value = false
   }
-}
-
-// ——— 翻页 ———
-function onPageChange(page: number) {
-  load(page)
-}
-
-// ——— 状态 tag 颜色映射 ———
-const statusType: Record<BidNoticeStatus, '' | 'info' | 'primary' | 'success' | 'warning' | 'danger'> = {
-  DRAFT: 'info',
-  PUBLISHED: 'primary',
-  CLOSED: 'warning',
-  AWARDED: 'success',
-  CANCELLED: 'danger',
-}
-
-// ——— 时间格式化(inline,不引 dayjs) ———
-function formatTime(iso?: string): string {
-  return iso ? iso.replace('T', ' ').substring(0, 16) : '-'
 }
 
 // ——— 编辑按钮:跳转到编辑页 ———
@@ -159,7 +150,7 @@ async function onStatusConfirm() {
     <div class="page-header">
       <h2 class="page-title">招标公告列表</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/')">← 返回首页</el-button>
+        <el-button @click="router.push('/')">← 返回首页</el-button>
       </div>
     </div>
 
@@ -180,7 +171,7 @@ async function onStatusConfirm() {
 
       <el-table-column prop="status" label="状态" width="110">
         <template #default="{ row }: { row: InvitationForBid }">
-          <el-tag v-if="row.status" :type="statusType[row.status]" disable-transitions>
+          <el-tag v-if="row.status" :type="BID_NOTICE_STATUS_TYPE[row.status] ?? 'info'" disable-transitions>
             {{ row.status }}
           </el-tag>
           <span v-else>-</span>
@@ -204,7 +195,7 @@ async function onStatusConfirm() {
       </el-table-column>
     </el-table>
 
-        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+        <div class="page-pagination">
             <!--
                 v-model:current-page + @current-change 看似重复触发,
                 实际: v-model 只更新 currentPage.value,@current-change 才会发请求。
@@ -217,7 +208,7 @@ async function onStatusConfirm() {
                 :total="total"
                 layout="total, prev, pager, next, jumper"
                 background
-                @current-change="onPageChange"
+                @current-change="load"
             />
         </div>
 
@@ -235,7 +226,7 @@ async function onStatusConfirm() {
                 </p>
                 <el-form label-width="80px">
                     <el-form-item label="当前状态">
-                        <el-tag v-if="statusTarget.status" :type="statusType[statusTarget.status]" disable-transitions>
+                        <el-tag v-if="statusTarget.status" :type="BID_NOTICE_STATUS_TYPE[statusTarget.status] ?? 'info'" disable-transitions>
                             {{ statusTarget.status }}
                         </el-tag>
                     </el-form-item>

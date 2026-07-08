@@ -32,19 +32,22 @@
  *   - exports: 无
  *   - props: 无
  *   - api 依赖: createInvitationForBid(data)
- *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *   - 跨组件导航: useRouter().push() (返回首页按钮)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card / .form-actions
  *   - scoped (本文件 owns):
  *     .create-form-card    (max-width: 860px; 居中)
  *     .create-result-card  (max-width: 860px; margin-top: 16px)
  */
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { createInvitationForBid } from '@/api/invitation-for-bid'
 import type { AddRequest, InvitationForBid } from '@/types/invitation-for-bid'
+
+const router = useRouter()
 
 // el-input-number 对 0 展示"空",所以用 null 占位,提交时 ?? 0 兜底
 const form = reactive<AddRequest>({
@@ -97,12 +100,12 @@ async function onSubmit() {
     <div class="page-header">
       <h2 class="page-title">创建招标公告</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/')">← 返回首页</el-button>
+        <el-button @click="router.push('/')">← 返回首页</el-button>
       </div>
     </div>
 
     <el-card class="create-form-card page-card">
-      <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
+      <el-form :model="form" label-width="120px">
       <el-divider content-position="left">基本信息</el-divider>
 
             <el-form-item label="经办人 ID" required>

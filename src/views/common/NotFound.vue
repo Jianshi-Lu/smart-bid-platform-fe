@@ -30,6 +30,8 @@ const router = useRouter()
     <div class="not-found">
         <h1>404</h1>
         <p class="title">您访问的页面不存在</p>
+        <!-- route.path 是用户输入但未匹配上的完整 URL,便于定位错误链接 -->
+        <p class="path-hint">{{ route.path }}</p>
         <el-button type="primary" size="large" @click="router.push('/')">
             返回首页
         </el-button>

@@ -25,36 +25,46 @@
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
  *   ⑧ loading=false → <el-table> 渲染 8 列 + <el-pagination :total>
  *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → onPageChange(page) → load(page)
+ *   ⑩ @current-change → 直接绑 load(page) 触发请求
  *   ⑪ 回到 ③ 循环
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
  * ─── Class hierarchy ───
- *   const rows / total / currentPage / pageSize=10 / loading (ref)
- *   function load(page) / onPageChange(page)
- *   const riskLevelType: Record<string, ElementTagType>   // LOW/MEDIUM/HIGH/CRITICAL → tag 色
+ *   const rows        = ref<RiskAnalysis[]>([])  // 当前页数据
+ *   const total       = ref(0)                  // 总记录数
+ *   const currentPage = ref(1)                  // 当前页号
+ *   const pageSize    = 10                      // 固定,不开放
+ *   const loading     = ref(false)              // v-loading 状态
+ *   function load(page)                         // 触发分页请求(直接绑 el-pagination)
  *   - exports: 无
  *   - props: 无
- *   - api 依赖: listRiskAnalyses(query)        // 单向: 风险模块的读端点
- *   - 跨组件导航: $router.push('/')
+ *   - api 依赖: listRiskAnalyses(query)         // 单向: 风险模块的读端点
+ *   - 跨组件导航: useRouter().push() (返回首页按钮)
+ *   - 共享常量: RISK_LEVEL_TYPE (src/shared/utils/el-tag.ts)
+ *   - 共享工具: formatTime (src/shared/utils/format.ts)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
  *   - scoped (本文件 owns): 无
  *
  * 模块特有: 8 列展示(含 riskLevel 用 el-tag 颜色映射);
  * summary / suggestions / promptVersion 用 show-overflow-tooltip 截断;
- * analyzedAt 用 inline formatTime 处理 ISO-8601;
+ * analyzedAt 用 formatTime 处理 ISO-8601;
  * rawResponse 不展示(长度大,UI 不友好);
  * 本模块为只读,无 create/edit/delete;
  * AI 触发分析见 BidRecord 列表的"风险分析"按钮(行内操作)。
  */
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { listRiskAnalyses } from '@/api/risk-analysis'
 import type { RiskAnalysis } from '@/types/risk-analysis'
+import { RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
+import { formatTime } from '@/shared/utils/format'
+
+const router = useRouter()
 
 // ——— 状态机 ———
 const rows = ref<RiskAnalysis[]>([])
@@ -91,24 +101,6 @@ async function load(page: number) {
     loading.value = false
   }
 }
-
-// ——— 翻页 ———
-function onPageChange(page: number) {
-  load(page)
-}
-
-// ——— 风险等级 → el-tag 颜色映射 ———
-const riskLevelType: Record<string, '' | 'info' | 'success' | 'warning' | 'danger'> = {
-  LOW: 'success',
-  MEDIUM: 'warning',
-  HIGH: 'danger',
-  CRITICAL: 'danger',
-}
-
-// ——— 时间格式化(inline,不引 dayjs) ———
-function formatTime(iso?: string): string {
-  return iso ? iso.replace('T', ' ').substring(0, 16) : '-'
-}
 </script>
 
 <template>
@@ -116,7 +108,7 @@ function formatTime(iso?: string): string {
     <div class="page-header">
       <h2 class="page-title">风险分析列表</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/')">← 返回首页</el-button>
+        <el-button @click="router.push('/')">← 返回首页</el-button>
       </div>
     </div>
 
@@ -137,7 +129,7 @@ function formatTime(iso?: string): string {
       <el-table-column prop="bidderName" label="投标人" min-width="160" show-overflow-tooltip />
       <el-table-column prop="riskLevel" label="风险等级" width="110">
         <template #default="{ row }: { row: RiskAnalysis }">
-          <el-tag v-if="row.riskLevel" :type="riskLevelType[row.riskLevel] ?? 'info'" disable-transitions>
+          <el-tag v-if="row.riskLevel" :type="RISK_LEVEL_TYPE[row.riskLevel] ?? 'info'" disable-transitions>
             {{ row.riskLevel }}
           </el-tag>
           <span v-else>-</span>
@@ -153,7 +145,7 @@ function formatTime(iso?: string): string {
       </el-table-column>
     </el-table>
 
-    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+    <div class="page-pagination">
       <!--
           v-model:current-page + @current-change 看似重复触发,
           实际: v-model 只更新 currentPage.value,@current-change 才会发请求。
@@ -166,7 +158,7 @@ function formatTime(iso?: string): string {
           :total="total"
           layout="total, prev, pager, next, jumper"
           background
-          @current-change="onPageChange"
+          @current-change="load"
       />
     </div>
   </div>

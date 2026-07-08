@@ -13,7 +13,7 @@
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
  *   ⑧ loading=false → <el-table> 渲染 5 列 + <el-pagination :total>
  *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → onPageChange(page) → load(page)
+ *   ⑩ @current-change → 直接绑 load(page) 触发请求
  *   ⑪ 回到 ③ 循环
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
@@ -22,23 +22,29 @@
  * pageSize=10 固定,显式覆盖 BE 默认的 3(让 3 模块列表行为一致)。
  *
  * ─── Class hierarchy ───
- *   const rows / total / currentPage / loading (ref)
- *   const pageSize = 10 (固定常量,覆盖 BE 默认 3)
- *   function load(page) / onPageChange(page)
+ *   const rows        = ref<BidHandlerInfo[]>([])  // 当前页数据
+ *   const total       = ref(0)                    // 总记录数
+ *   const currentPage = ref(1)                    // 当前页号
+ *   const pageSize    = 10                        // 固定常量(覆盖 BE 默认 3)
+ *   const loading     = ref(false)                // v-loading 状态
+ *   function load(page)         // 触发分页请求(直接绑 el-pagination)
  *   - exports: 无
  *   - props: 无
  *   - api 依赖: listBidHandlers(query)
- *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *   - 跨组件导航: useRouter().push() (返回首页按钮)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
  *   - scoped (本文件 owns): 无
  */
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { listBidHandlers } from '@/api/bid-handler-info'
 import type { BidHandlerInfo } from '@/types/bid-handler-info'
+
+const router = useRouter()
 
 // ——— 状态机 ———
 const rows = ref<BidHandlerInfo[]>([])
@@ -73,11 +79,6 @@ async function load(page: number) {
     loading.value = false
   }
 }
-
-// ——— 翻页 ———
-function onPageChange(page: number) {
-  load(page)
-}
 </script>
 
 <template>
@@ -85,7 +86,7 @@ function onPageChange(page: number) {
     <div class="page-header">
       <h2 class="page-title">招标经办人列表</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/')">← 返回首页</el-button>
+        <el-button @click="router.push('/')">← 返回首页</el-button>
       </div>
     </div>
 
@@ -107,7 +108,7 @@ function onPageChange(page: number) {
       <el-table-column prop="targetEmail" label="通知邮箱" min-width="220" show-overflow-tooltip />
     </el-table>
 
-    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+    <div class="page-pagination">
       <!--
           v-model:current-page + @current-change 看似重复触发,
           实际: v-model 只更新 currentPage.value,@current-change 才会发请求。
@@ -120,7 +121,7 @@ function onPageChange(page: number) {
           :total="total"
           layout="total, prev, pager, next, jumper"
           background
-          @current-change="onPageChange"
+          @current-change="load"
       />
     </div>
   </div>

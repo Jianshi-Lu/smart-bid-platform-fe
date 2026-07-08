@@ -19,7 +19,8 @@
  *   const groups: HomeGroup[]                    // 4 个模块的静态数据
  *   - exports: 无(无 defineExpose / 无 emit)
  *   - props: 无
- *   - 不调用任何 api/ 不订阅 store
+ *   - 不调用任何 api / 不订阅 store
+ *   - 跨组件导航: <router-link :to="a.path"> (静态路径,声明式导航)
  *
  * ─── Style dependencies ───
  *   - global (style.css): 无 (本文件不引用 .page*)

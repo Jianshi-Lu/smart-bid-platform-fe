@@ -18,7 +18,7 @@
  *   const entries: HomeEntry[]                   // 当前 1 项,数组形态便于扩展
  *   - exports: 无
  *   - props: 无
- *   - 跳转: 直接调 $router.push (template 内联) — 无业务方法
+ *   - 跨组件导航: useRouter().push() (卡片整张可点 + 返回首页按钮)
  *
  * ─── Style dependencies ───
  *   - global (style.css): 无 (本文件不引用 .page*)
@@ -31,6 +31,7 @@
  *   - el-card shadow="hover" 替代手写 box-shadow 抬升
  */
 import type { Component } from 'vue'
+import { useRouter } from 'vue-router'
 import { Document } from '@element-plus/icons-vue'
 
 interface HomeEntry {
@@ -44,6 +45,8 @@ interface HomeEntry {
     icon: Component
 }
 
+const router = useRouter()
+
 const entries: HomeEntry[] = [
     {
         title: '投标项目列表',
@@ -52,6 +55,10 @@ const entries: HomeEntry[] = [
         icon: Document,
     },
 ]
+
+function go(path: string) {
+  router.push(path)
+}
 </script>
 
 <template>
@@ -68,7 +75,7 @@ const entries: HomeEntry[] = [
                 :md="8"
                 :lg="6"
             >
-                <el-card class="home-card" shadow="hover" @click="$router.push(entry.path)">
+                <el-card class="home-card" shadow="hover" @click="go(entry.path)">
                     <div class="card-header">
                         <el-icon :size="24"><component :is="entry.icon" /></el-icon>
                         <h3>{{ entry.title }}</h3>
@@ -79,7 +86,7 @@ const entries: HomeEntry[] = [
         </el-row>
 
         <div class="home-footer">
-            <el-button @click="$router.push('/')">← 返回首页</el-button>
+            <el-button @click="go('/')">← 返回首页</el-button>
         </div>
     </div>
 </template>

@@ -25,28 +25,33 @@
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
  *   ⑧ loading=false → <el-table> 渲染 7 列 + 1 操作列 + <el-pagination :total>
  *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → onPageChange(page) → load(page)
+ *   ⑩ @current-change → 直接绑 load(page) 触发请求
  *   ⑪ 回到 ③ 循环
  *
  * 行内操作链(投标跳转):
  *   ① 用户点击行末"我要投标"按钮
- *   ② onBid(row) → $router.push('/supplier/bid-record/create?invitationId=' + row.invitationId)
+ *   ② onBid(row) → router.push({path, query: {invitationId: String(...)}})
  *   ③ SupplierBidRecordCreate.vue 从 query 读 invitationId,展示选中公告 + 录入表单
  *
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
  * ─── Class hierarchy ───
- *   const rows / total / currentPage / pageSize=10 / loading (ref)
- *   const statusType: Record<BidNoticeStatus, ElementTagType>
- *   function load(page) / onPageChange(page)
- *   function goBid(invitationId)        // 行末"我要投标" → /supplier/bid-record/create?invitationId=N
+ *   const rows        = ref<InvitationForBid[]>([])  // 当前页数据
+ *   const total       = ref(0)                      // 总记录数
+ *   const currentPage = ref(1)                      // 当前页号
+ *   const pageSize    = 10                          // 固定,不开放
+ *   const loading     = ref(false)                  // v-loading 状态
+ *   function load(page)                             // 列表分页请求(直接绑 el-pagination)
+ *   function onBid(row)                             // 行末"我要投标" → query 传 invitationId
  *   - exports: 无
  *   - props: 无
  *   - api 依赖: listInvitationForBids(query)        // 跨角色复用 purchaser 模块的读端点
- *   - 跨组件导航: $router.push (返回首页 / 投标录入)
+ *   - 跨组件导航: useRouter().push() (返回投标方入口 / 投标录入)
+ *   - 共享常量: BID_NOTICE_STATUS_TYPE (src/shared/utils/el-tag.ts)
+ *   - 共享工具: formatTime (src/shared/utils/format.ts)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
  *   - scoped (本文件 owns): 无
  *
  * 模块特有: 7 列 + 1 操作列(行末"我要投标"按钮);
@@ -59,7 +64,11 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { listInvitationForBids } from '@/api/invitation-for-bid'
-import type { BidNoticeStatus, InvitationForBid } from '@/types/invitation-for-bid'
+import type { InvitationForBid } from '@/types/invitation-for-bid'
+import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
+import { formatTime } from '@/shared/utils/format'
+
+const router = useRouter()
 
 // ——— 状态机 ———
 const rows = ref<InvitationForBid[]>([])
@@ -67,8 +76,6 @@ const total = ref(0)
 const currentPage = ref(1)
 const pageSize = 10                 // 固定,不开放
 const loading = ref(false)
-
-const router = useRouter()
 
 // ——— 生命周期 ———
 onMounted(() => {
@@ -97,31 +104,12 @@ async function load(page: number) {
   }
 }
 
-// ——— 翻页 ———
-function onPageChange(page: number) {
-  load(page)
-}
-
-// ——— 行内操作:跳转到投标录入 ———
+// ——— 行内操作:跳转到投标录入(query 传 invitationId) ———
 function onBid(row: InvitationForBid) {
   router.push({
     path: '/supplier/bid-record/create',
     query: { invitationId: String(row.invitationId) },
   })
-}
-
-// ——— 状态 tag 颜色映射(与 InvitationForBid/List 对齐) ———
-const statusType: Record<BidNoticeStatus, '' | 'info' | 'primary' | 'success' | 'warning' | 'danger'> = {
-  DRAFT: 'info',
-  PUBLISHED: 'primary',
-  CLOSED: 'warning',
-  AWARDED: 'success',
-  CANCELLED: 'danger',
-}
-
-// ——— 时间格式化(inline,不引 dayjs) ———
-function formatTime(iso?: string): string {
-  return iso ? iso.replace('T', ' ').substring(0, 16) : '-'
 }
 </script>
 
@@ -130,7 +118,7 @@ function formatTime(iso?: string): string {
     <div class="page-header">
       <h2 class="page-title">投标项目列表</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/supplier')">← 返回投标方入口</el-button>
+        <el-button @click="router.push('/supplier')">← 返回投标方入口</el-button>
       </div>
     </div>
 
@@ -153,7 +141,7 @@ function formatTime(iso?: string): string {
 
       <el-table-column prop="status" label="状态" width="110">
         <template #default="{ row }: { row: InvitationForBid }">
-          <el-tag v-if="row.status" :type="statusType[row.status]" disable-transitions>
+          <el-tag v-if="row.status" :type="BID_NOTICE_STATUS_TYPE[row.status] ?? 'info'" disable-transitions>
             {{ row.status }}
           </el-tag>
           <span v-else>-</span>
@@ -183,7 +171,7 @@ function formatTime(iso?: string): string {
       </el-table-column>
     </el-table>
 
-    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+    <div class="page-pagination">
       <!--
           v-model:current-page + @current-change 看似重复触发,
           实际: v-model 只更新 currentPage.value,@current-change 才会发请求。
@@ -196,7 +184,7 @@ function formatTime(iso?: string): string {
           :total="total"
           layout="total, prev, pager, next, jumper"
           background
-          @current-change="onPageChange"
+          @current-change="load"
       />
     </div>
   </div>

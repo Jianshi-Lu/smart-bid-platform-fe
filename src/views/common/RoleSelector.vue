@@ -17,8 +17,8 @@
  * ─── Class hierarchy ───
  *   - exports: 无
  *   - props: 无
- *   - state: 无 (纯展示页,2 张 el-card 直接绑 $router.push)
- *   - 跳转: $router.push('/purchaser') | $router.push('/supplier')
+ *   - state: 无 (纯展示页,2 张 el-card 直接绑 go())
+ *   - 跨组件导航: useRouter().push() (招标方 / 投标方入口)
  *
  * ─── Style dependencies ───
  *   - global (style.css): 无
@@ -28,7 +28,14 @@
  *     .role-cards / .role-card / .role-card:hover (含 translateY(-2px))
  *     .role-icon / .role-card h2 / .role-card p
  */
+import { useRouter } from 'vue-router'
 import { Document, ShoppingCart } from '@element-plus/icons-vue'
+
+const router = useRouter()
+
+function go(path: string) {
+  router.push(path)
+}
 </script>
 
 <template>
@@ -40,7 +47,7 @@ import { Document, ShoppingCart } from '@element-plus/icons-vue'
 
         <el-row :gutter="32" justify="center">
             <el-col :xs="24" :md="10" :lg="8">
-                <el-card class="role-card" shadow="hover" @click="$router.push('/purchaser')">
+                <el-card class="role-card" shadow="hover" @click="go('/purchaser')">
                     <el-icon :size="64" class="role-icon"><Document /></el-icon>
                     <h2>招标方入口</h2>
                     <p class="description">公告管理 / 经办人管理 / 投标记录 / 风险分析</p>
@@ -48,7 +55,7 @@ import { Document, ShoppingCart } from '@element-plus/icons-vue'
             </el-col>
 
             <el-col :xs="24" :md="10" :lg="8">
-                <el-card class="role-card" shadow="hover" @click="$router.push('/supplier')">
+                <el-card class="role-card" shadow="hover" @click="go('/supplier')">
                     <el-icon :size="64" class="role-icon"><ShoppingCart /></el-icon>
                     <h2>投标方入口</h2>
                     <p class="description"></p>

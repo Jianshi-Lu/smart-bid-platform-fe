@@ -27,7 +27,7 @@
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
  *   ⑧ loading=false → <el-table> 渲染 8 列 + 1 操作列 + <el-pagination :total>
  *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → onPageChange(page) → load(page)
+ *   ⑩ @current-change → 直接绑 load(page) 触发请求
  *   ⑪ 回到 ③ 循环
  *
  * 风险分析触发链(行内操作):
@@ -48,37 +48,44 @@
  *
  * ─── Class hierarchy ───
  *   const rows / total / currentPage / pageSize=10 / loading (ref)
- *   const riskDialogVisible = ref(false)
- *   const currentAnalysis   = ref<RiskAnalysis | null>(null)   // 弹窗展示实体
- *   const analyzing         = ref(false)                       // 按钮 loading
- *   function load(page) / onPageChange(page)
- *   async function onAnalyzeRisk(bidRecordId)                   // 行末按钮 → POST analyze-risk
+ *   const analyzingId       = ref<number|null>(null)  // 当前正在分析的 bidRecordId,锁定其他行
+ *   const riskDialogVisible = ref(false)              // 弹窗可见
+ *   const currentAnalysis   = ref<RiskAnalysis|null>(null)  // 弹窗展示实体(单条最新)
+ *   function load(page)                                // 列表分页请求(直接绑 el-pagination)
+ *   async function onAnalyzeRisk(row)                  // 行末按钮 → POST analyze-risk
  *   - exports: 无
  *   - props: 无
  *   - api 依赖: listBidRecords(query) + analyzeRisk(id)         // 跨模块: 调 risk-analysis 域
  *   - 类型依赖: BidRecord(自有) + RiskAnalysis(从 types/risk-analysis import)
- *   - 跨组件导航: $router.push('/')
+ *   - 跨组件导航: useRouter().push() (返回首页按钮)
+ *   - 共享常量: RISK_LEVEL_TYPE (src/shared/utils/el-tag.ts)
+ *   - 共享工具: formatPrice / formatTime (src/shared/utils/format.ts)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions
- *   - scoped (本文件 owns): .risk-dialog (风险分析弹窗宽度)
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
+ *   - scoped (本文件 owns): .risk-text (风险摘要/建议等长文本展示样式)
  *
  * 模块特有: 8 列 + 1 操作列;
- * quotePrice 用 inline formatPrice 兜 2 位小数(避免 JS 浮点尾巴);
- * bidAt 用 inline formatTime 处理 ISO-8601;
+ * quotePrice 用 formatPrice 兜 2 位小数(避免 JS 浮点尾巴);
+ * bidAt 用 formatTime 处理 ISO-8601;
  * credentials 是"资信材料链接",最长 500 字符,
  * 列用 show-overflow-tooltip 截断 + hover 弹完整内容;
- * 新增 riskLevel 颜色映射(LOW/MEDIUM/HIGH/CRITICAL → success/warning/danger/danger)。
+ * riskLevel 颜色映射见 RISK_LEVEL_TYPE (LOW/MEDIUM/HIGH/CRITICAL → success/warning/danger/danger)。
  *
  * 并发控制: 同一时刻只能分析一行(analyzingId !== null 时其他行按钮 disabled),
  *          避免结果混淆 / 多个并发 DeepSeek 请求。
  */
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { listBidRecords, analyzeRisk } from '@/api/bid-record'
 import type { BidRecord } from '@/types/bid-record'
 import type { RiskAnalysis } from '@/types/risk-analysis'
+import { RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
+import { formatPrice, formatTime } from '@/shared/utils/format'
+
+const router = useRouter()
 
 // ——— 列表状态机 ———
 const rows = ref<BidRecord[]>([])
@@ -121,11 +128,6 @@ async function load(page: number) {
   }
 }
 
-// ——— 翻页 ———
-function onPageChange(page: number) {
-  load(page)
-}
-
 // ——— 风险分析触发(行内操作) ———
 async function onAnalyzeRisk(row: BidRecord) {
   // ② 置 analyzingId → UI 反馈"分析中..." + 其他行 disabled
@@ -150,24 +152,6 @@ async function onAnalyzeRisk(row: BidRecord) {
     analyzingId.value = null
   }
 }
-
-// ——— 风险等级 → el-tag 颜色映射 ———
-const riskLevelType: Record<string, '' | 'info' | 'success' | 'warning' | 'danger'> = {
-  LOW: 'success',
-  MEDIUM: 'warning',
-  HIGH: 'danger',
-  CRITICAL: 'danger',
-}
-
-// ——— 报价格式化(inline,等出现第 2 处重复再抽 shared/) ———
-function formatPrice(price: number | undefined): string {
-  return price != null ? price.toFixed(2) : '-'
-}
-
-// ——— 时间格式化(inline,不引 dayjs) ———
-function formatTime(iso?: string): string {
-  return iso ? iso.replace('T', ' ').substring(0, 16) : '-'
-}
 </script>
 
 <template>
@@ -175,7 +159,7 @@ function formatTime(iso?: string): string {
     <div class="page-header">
       <h2 class="page-title">投标记录列表</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/')">← 返回首页</el-button>
+        <el-button @click="router.push('/')">← 返回首页</el-button>
       </div>
     </div>
 
@@ -229,7 +213,7 @@ function formatTime(iso?: string): string {
       </el-table-column>
     </el-table>
 
-    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+    <div class="page-pagination">
       <!--
           v-model:current-page + @current-change 看似重复触发,
           实际: v-model 只更新 currentPage.value,@current-change 才会发请求。
@@ -242,7 +226,7 @@ function formatTime(iso?: string): string {
           :total="total"
           layout="total, prev, pager, next, jumper"
           background
-          @current-change="onPageChange"
+          @current-change="load"
       />
     </div>
 
@@ -263,7 +247,7 @@ function formatTime(iso?: string): string {
           <el-form-item label="投标记录 ID">{{ currentAnalysis.bidRecordId }}</el-form-item>
           <el-form-item label="投标人">{{ currentAnalysis.bidderName }}</el-form-item>
           <el-form-item label="风险等级">
-            <el-tag :type="riskLevelType[currentAnalysis.riskLevel] ?? 'info'">
+            <el-tag :type="RISK_LEVEL_TYPE[currentAnalysis.riskLevel] ?? 'info'">
               {{ currentAnalysis.riskLevel }}
             </el-tag>
           </el-form-item>

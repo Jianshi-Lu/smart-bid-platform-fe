@@ -7,7 +7,7 @@
  * 字段命名: 严格对齐 BE getter(驼峰);BE 修改字段后必须同步更新本文件。
  *
  * 特殊字段:
- *   - riskLevel: 枚举字符串 (LOW / MEDIUM / HIGH / CRITICAL)
+ *   - riskLevel: 枚举字符串 (LOW / MEDIUM / HIGH / CRITICAL),用 RiskLevel 类型约束
  *   - rawResponse: DeepSeek 原始 JSON 字符串,长度大,UI 默认不展示
  *   - promptVersion: 提示词版本,可追溯 AI 行为
  *
@@ -19,28 +19,32 @@
  *       为独立 risk-analysis 模块,bid-record 通过 import 引用此类型。
  *
  * ─── Class hierarchy ───
- *   export interface RiskAnalysis  { 8 字段(主键 + 7 必填/可选) }
+ *   export type RiskLevel         (枚举联合: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL')
+ *   export interface RiskAnalysis  { 8 字段(主键 + 7 必填/可选);riskLevel 字段用 RiskLevel }
  *   export interface ListRequest   { page?, pageSize?, sort? }
  *
  * 关系:
  *   - ListRequest  是 listRiskAnalyses 的 query 参数
  *   - RiskAnalysis 是 BE 返回的实体(由 analyzeRisk 副作用落库生成,或 list 查询)
+ *   - RiskLevel    是 riskLevel 字段的类型,被 RiskAnalysis + shared/utils/el-tag.ts 引用
  *
  * 调用方(view):
- *   - purchaser/RiskAnalysis/List.vue:        RiskAnalysis + ListRequest
- *   - purchaser/BidRecord/List.vue (弹窗):     RiskAnalysis(行内风险分析按钮)
- *   - api/bid-record.ts:                       analyzeRisk 返回 RiskAnalysis
+ *   - purchaser/RiskAnalysis/List.vue:        RiskAnalysis + RiskLevel + ListRequest
+ *   - purchaser/BidRecord/List.vue (弹窗):    RiskAnalysis(行内风险分析按钮)
+ *   - api/bid-record.ts:                      analyzeRisk 返回 RiskAnalysis
+ *   - shared/utils/el-tag.ts:                 RISK_LEVEL_TYPE 用 RiskLevel 作 key
  *
  * 跨模块依赖:
  *   - 入依赖 (谁引我): types/bid-record.ts (无直接,但 List.vue 通过 types/bid-record 间接)
  *   - 出依赖 (我引谁): 无
  *   - 严格单向: bid-record → risk-analysis,反之不可
- *
- * 字段特殊:
- *   - riskLevel: 枚举字符串 (LOW / MEDIUM / HIGH / CRITICAL)
- *   - rawResponse: DeepSeek 原始 JSON 字符串,长度大,UI 默认不展示
- *   - promptVersion: 提示词版本,可追溯 AI 行为
  */
+
+/**
+ * 风险等级枚举(对齐 BE DeepSeek 返回的 riskLevel 字段)。
+ * 视图层 RISK_LEVEL_TYPE 颜色映射以本类型为 key,新增等级必须同步。
+ */
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 
 /**
  * 风险分析结果(BE 返回的 JSON 结构)。
@@ -52,7 +56,7 @@ export interface RiskAnalysis {
     analysisId: number          // 主键,自增
     bidRecordId: number         // 关联的投标记录 ID
     bidderName: string          // 投标人名称(冗余存储,便于查询)
-    riskLevel: string           // 风险等级(枚举字符串: LOW / MEDIUM / HIGH / CRITICAL)
+    riskLevel: RiskLevel        // 风险等级(枚举联合: LOW / MEDIUM / HIGH / CRITICAL),强类型
     summary: string             // 风险摘要(AI 生成的简短描述)
     suggestions: string         // 风险建议(AI 生成的处置建议)
     rawResponse?: string        // DeepSeek 原始 JSON 字符串(可选,长度大,UI 默认不展示)

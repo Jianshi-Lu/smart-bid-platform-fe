@@ -33,17 +33,20 @@
  *   - exports: 无
  *   - props: 无
  *   - api 依赖: createBidRecord(data)
- *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *   - 跨组件导航: useRouter().push() (返回首页按钮)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card / .form-actions
  *   - scoped (本文件 owns): .create-form-card / .create-result-card
  */
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { createBidRecord } from '@/api/bid-record'
 import type { AddRequest, BidRecord } from '@/types/bid-record'
+
+const router = useRouter()
 
 // el-input-number 对 0 展示"空",所以用 null 占位,提交时 ?? 0 兜底
 const form = reactive<AddRequest>({
@@ -85,12 +88,12 @@ async function onSubmit() {
     <div class="page-header">
       <h2 class="page-title">创建投标记录</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/')">← 返回首页</el-button>
+        <el-button @click="router.push('/')">← 返回首页</el-button>
       </div>
     </div>
 
     <el-card class="create-form-card page-card">
-      <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
+      <el-form :model="form" label-width="120px">
         <el-form-item label="招标公告 ID" required>
           <!-- :min="1" 排除 0/负数:BE @NotNull 校验要求 > 0 -->
           <el-input-number v-model="form.invitationId" :min="1" />

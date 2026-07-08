@@ -32,17 +32,20 @@
  *   - exports: 无
  *   - props: 无
  *   - api 依赖: createBidHandlerInfo(data)
- *   - 跨组件导航: $router.push('/') (返回首页按钮)
+ *   - 跨组件导航: useRouter().push() (返回首页按钮)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card / .form-actions
  *   - scoped (本文件 owns): .create-form-card / .create-result-card
  */
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { createBidHandlerInfo } from '@/api/bid-handler-info'
 import type { AddRequest, BidHandlerInfo } from '@/types/bid-handler-info'
+
+const router = useRouter()
 
 const form = reactive<AddRequest>({
   handlerName: '',
@@ -77,7 +80,7 @@ async function onSubmit() {
     <div class="page-header">
       <h2 class="page-title">创建招标经办人</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/')">← 返回首页</el-button>
+        <el-button @click="router.push('/')">← 返回首页</el-button>
       </div>
     </div>
 

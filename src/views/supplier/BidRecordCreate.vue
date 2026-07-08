@@ -48,22 +48,25 @@
  *
  * ─── Class hierarchy ───
  *   const route = useRoute();  const router = useRouter()
- *   const invitationId = Number(route.query.invitationId)   // 无效 → 跳列表
- *   const selectedInvitation = ref<InvitationForBid | null>(null)  // 选中公告
- *   const loadingSel = ref(false)
- *   const form: reactive<AddRequest>    // 4 字段(去掉 invitationId,提交时拼回去)
+ *   const invitationId       = computed<number|null>(...)  // 从 query 解析,无效 → 跳列表
+ *   const selectedInvitation = ref<InvitationForBid|null>(null)  // 选中公告详情(async 加载)
+ *   const loadingInvitation  = ref(false)                      // 选中公告加载中
+ *   const form: reactive<AddRequest>                           // 4 字段 + invitationId 占位
  *   const submitting = ref(false)
- *   const created = ref<BidRecord | null>(null)
- *   onMounted → loadSelected()  →  getInvitationForBid(id)
- *   async function onSubmit()           // 1) 提交 2) 跳列表
+ *   const created    = ref<BidRecord|null>(null)
+ *   onMounted → loadSelected()                                 // 选公告 + 校验 id
+ *   async function onSubmit()                                  // 提交 → 留本页
  *   - exports: 无
  *   - props: 无
- *   - api 依赖: getInvitationForBid + createBidRecord   // 跨模块
+ *   - api 依赖: getInvitationForBid + createBidRecord           // 跨模块
  *   - 路由: useRoute() 取 query.invitationId; useRouter() 跳列表
+ *   - 共享常量: BID_NOTICE_STATUS_TYPE (src/shared/utils/el-tag.ts)
+ *   - 共享工具: formatTime / displayOrDash / yesNo (src/shared/utils/format.ts)
  *
  * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card
- *   - scoped (本文件 owns): .selected-section (选中公告 el-descriptions 块) / .create-result-card
+ *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card / .form-actions
+ *   - scoped (本文件 owns):
+ *     .invitation-card / .bid-form-card / .create-result-card
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -73,6 +76,8 @@ import { getInvitationForBid } from '@/api/invitation-for-bid'
 import { createBidRecord } from '@/api/bid-record'
 import type { InvitationForBid } from '@/types/invitation-for-bid'
 import type { AddRequest, BidRecord } from '@/types/bid-record'
+import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
+import { formatTime, displayOrDash, yesNo } from '@/shared/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -148,20 +153,6 @@ async function onSubmit() {
     submitting.value = false
   }
 }
-
-// ——— 状态 tag 颜色映射 ———
-const statusType: Record<string, '' | 'info' | 'primary' | 'success' | 'warning' | 'danger'> = {
-  DRAFT: 'info',
-  PUBLISHED: 'primary',
-  CLOSED: 'warning',
-  AWARDED: 'success',
-  CANCELLED: 'danger',
-}
-
-// ——— 时间格式化 ———
-function formatTime(iso?: string): string {
-  return iso ? iso.replace('T', ' ').substring(0, 16) : '-'
-}
 </script>
 
 <template>
@@ -169,7 +160,7 @@ function formatTime(iso?: string): string {
     <div class="page-header">
       <h2 class="page-title">投标录入</h2>
       <div class="page-actions">
-        <el-button @click="$router.push('/supplier/invitation/list')">← 返回项目列表</el-button>
+        <el-button @click="router.push('/supplier/invitation/list')">← 返回项目列表</el-button>
       </div>
     </div>
 
@@ -185,10 +176,10 @@ function formatTime(iso?: string): string {
         <el-descriptions :column="2" border>
           <el-descriptions-item label="项目编号">{{ selectedInvitation.projectNo }}</el-descriptions-item>
           <el-descriptions-item label="采购任务编号">{{ selectedInvitation.purchaseTaskNo }}</el-descriptions-item>
-          <el-descriptions-item label="采购公司">{{ selectedInvitation.purchaseCompany || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="招标主体">{{ selectedInvitation.tenderingParty || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="采购公司">{{ displayOrDash(selectedInvitation.purchaseCompany) }}</el-descriptions-item>
+          <el-descriptions-item label="招标主体">{{ displayOrDash(selectedInvitation.tenderingParty) }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag v-if="selectedInvitation.status" :type="statusType[selectedInvitation.status] ?? 'info'">
+            <el-tag v-if="selectedInvitation.status" :type="BID_NOTICE_STATUS_TYPE[selectedInvitation.status] ?? 'info'">
               {{ selectedInvitation.status }}
             </el-tag>
             <span v-else>-</span>
@@ -197,7 +188,7 @@ function formatTime(iso?: string): string {
           <el-descriptions-item label="报名截止">{{ formatTime(selectedInvitation.registrationDeadline) }}</el-descriptions-item>
           <el-descriptions-item label="技术投标截止">{{ formatTime(selectedInvitation.technicalTenderDeadline) }}</el-descriptions-item>
           <el-descriptions-item label="商务投标截止">{{ formatTime(selectedInvitation.businessTenderDeadline) }}</el-descriptions-item>
-          <el-descriptions-item label="是否固定价">{{ selectedInvitation.isFixedPrice ? '是' : '否' }}</el-descriptions-item>
+          <el-descriptions-item label="是否固定价">{{ yesNo(selectedInvitation.isFixedPrice) }}</el-descriptions-item>
         </el-descriptions>
       </div>
       <el-empty v-else-if="!loadingInvitation" description="无法加载项目信息" />
@@ -211,7 +202,7 @@ function formatTime(iso?: string): string {
       <template #header>
         <strong>投标信息</strong>
       </template>
-      <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
+      <el-form :model="form" label-width="120px">
         <el-form-item label="招标公告 ID" required>
           <!-- :min="1" + :disabled: BE @NotNull 校验要求 > 0,且不可修改 -->
           <el-input-number v-model="form.invitationId" :min="1" :disabled="true" />

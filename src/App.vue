@@ -11,11 +11,16 @@
  *   src/views/{Feature}/{Action}.vue
  *   例:src/views/InvitationForBid/List.vue
  *
+ * 跨组件导航规范:
+ *   - 静态路径(已知 to,如品牌区):用 <router-link to="/" /> 声明式
+ *   - 动态路径(参数化或条件跳转):useRouter() 取 router,script 内 router.push()
+ *   - template 内联写法 $router.push 已弃用,统一改为 script 中声明方法
+ *
  * ─── Class hierarchy ───
  *   - exports: 无
  *   - props: 无
  *   - state: 无
- *   - 渲染: 顶部 header(品牌区 router-link to="/") + 主区域 <router-view />
+ *   - 渲染: 顶部 header(品牌区 <router-link to="/">) + 主区域 <router-view />
  *
  * ─── Style dependencies ───
  *   - global (style.css): 无

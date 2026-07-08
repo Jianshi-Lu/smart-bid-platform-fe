@@ -326,3 +326,18 @@ code {
   background: #ffffff;
   border-radius: 8px;
 }
+
+/* 列表分页右对齐容器: 替换模板里 `style="margin-top: 16px; display: flex; justify-content: flex-end;"` */
+.page-pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 表单底部按钮行: 替换模板里 `<el-form-item>` 包按钮的双触发模式 */
+.form-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
