@@ -13,7 +13,7 @@
  *
  * 依赖关系: 不依赖任何业务文件,只 import 自有类型。
  *
- * 历史: RiskAnalysis 类型原本定义在 src/modules/bid-record/types.ts(bid-record 列表
+ * 历史: RiskAnalysis 类型原本定义在 src/types/bid-record.ts(bid-record 列表
  *       的行内"风险分析"按钮需要此类型展示 dialog)。
  *       后端新增独立 RiskAnalysisController(GET /risk-analysis)后,前端同步分离
  *       为独立 risk-analysis 模块,bid-record 通过 import 引用此类型。

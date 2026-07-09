@@ -11,7 +11,7 @@
  *   - BidRecord.bidNo / bidAt: BE 自动算/填,AddRequest 不包含,form 无输入框
  *   - BidRecord.credentials: 资信材料链接,可选
  *
- * 注意: 风险分析相关类型(RiskAnalysis)已迁移到 src/modules/risk-analysis/types.ts,
+ * 注意: 风险分析相关类型(RiskAnalysis)已迁移到 src/types/risk-analysis.ts,
  *       本模块通过 import 引用(BidRecord 列表的"风险分析"按钮 + 弹窗)。
  *
  * 依赖关系: 不依赖任何业务文件,只 import 自有类型。

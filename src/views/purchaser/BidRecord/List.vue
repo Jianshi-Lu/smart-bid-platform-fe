@@ -21,7 +21,7 @@
  *   ② onMounted() → load(currentPage.value) 初始化第 1 页
  *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
  *   ④ 调用 listBidRecords({page, pageSize, sort:'bid_record_id desc'})
- *        → modules/bid-record/api.ts 的 http.get<Result<PageResult<BidRecord>>>
+ *        → api/bid-record.ts 的 http.get<Result<PageResult<BidRecord>>>
  *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
  *   ⑥ BE 返回 Result<PageResult<BidRecord>>,响应拦截器拆 envelope
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
@@ -34,7 +34,7 @@
  *   ① 用户点击行末"风险分析"按钮
  *   ② 触发 onAnalyzeRisk(row),置 analyzingId = row.bidRecordId
  *   ③ UI 反馈: 按钮文本变"分析中..." + :loading 转圈 + 其他行按钮 :disabled
- *   ④ 调用 analyzeRisk(row.bidRecordId) → modules/bid-record/api.ts 的
+ *   ④ 调用 analyzeRisk(row.bidRecordId) → api/bid-record.ts 的
  *        http.post<Result<RiskAnalysis>>(`/bid-record/analyze-risk/${id}`)
  *   ⑤ http 实例经 Vite 代理发到 BE 8080
  *   ⑥ BE 同步调用 DeepSeek → 解析 JSON → 落库 risk_analysis 表 → 返回最新 RiskAnalysis

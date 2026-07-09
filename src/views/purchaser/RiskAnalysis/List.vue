@@ -19,7 +19,7 @@
  *   ② onMounted() → load(currentPage.value) 初始化第 1 页
  *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
  *   ④ 调用 listRiskAnalyses({page, pageSize, sort:'analysis_id desc'})
- *        → modules/risk-analysis/api.ts 的 http.get<Result<PageResult<RiskAnalysis>>>
+ *        → api/risk-analysis.ts 的 http.get<Result<PageResult<RiskAnalysis>>>
  *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
  *   ⑥ BE 返回 Result<PageResult<RiskAnalysis>>,响应拦截器拆 envelope
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}

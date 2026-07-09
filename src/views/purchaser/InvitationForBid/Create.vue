@@ -10,7 +10,7 @@
  *   ⑤ 用户点击 <el-button @click="onSubmit">
  *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
  *   ⑦ onSubmit 内 { ...form, bidHandlerId ?? 0 } 读取并组装请求体
- *   ⑧ 调用 createInvitationForBid(form) → modules/invitation-for-bid/api.ts
+ *   ⑧ 调用 createInvitationForBid(form) → api/invitation-for-bid.ts
  *        的 http.post<Result<InvitationForBid>>('/invitation-for-bid/add', data)
  *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
  *   ⑩ BE 返回 Result<InvitationForBid>,响应拦截器拆 envelope → Promise resolve(entity)

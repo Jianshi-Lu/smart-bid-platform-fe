@@ -17,13 +17,13 @@ export interface Diff<T> {
 }
 
 /**
- * PageHelper 分页响应(3 个 list 端点共享: invitation-for-bid / bid-handler-info / bid-record)。
+ * PageHelper 分页响应(所有分页 list 端点共享: invitation-for-bid / bid-handler-info / bid-record / risk-analysis)。
  *
  * 字段来源: com.github.pagehelper.PageInfo<T> (pagehelper 6.1.1)
  *           + com.github.pagehelper.PageSerializable<T>。
  * fastjson2 按 getter 名序列化,字段名严格对齐 BE 返回的 JSON 键名。
  *
- * 17 字段 1:1 镜像(BE 字段增删时 TS 立刻报错提醒)。
+ * 18 字段 1:1 镜像(BE 字段增删时 TS 立刻报错提醒)。
  *
  * 命名注意:
  *   - isIsFirstPage / isHasPreviousPage 等双 is 前缀,getter 去掉 is 后
@@ -34,7 +34,7 @@ export interface Diff<T> {
  * ─── Class hierarchy ───
  *   export interface Result<T>     { code, message, data: T }       // BE 业务信封
  *   export interface Diff<T>       { before: T, after: T }          // PATCH 对比
- *   export interface PageResult<T> { 17 字段(见下) }                 // PageHelper 分页
+ *   export interface PageResult<T> { 18 字段(见下) }                 // PageHelper 分页
  *
  * 关系:
  *   - api/* 函数:  http.post<Result<InvitationForBid>>(url) → resp.data.data

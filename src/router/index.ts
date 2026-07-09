@@ -19,10 +19,10 @@
  * 命名规则:
  *   - URL 前缀对齐角色:purchaser(招标方) / supplier(投标方),业务子路径跟在角色下
  *   - 业务子路径对齐模块目录名(kebab-case):
- *     * /purchaser/invitation/*      对齐 src/modules/invitation-for-bid/ + BE V18 InvitationForBid 实体名
- *     * /purchaser/bid-handler-info/* 对齐 src/modules/bid-handler-info/
- *     * /purchaser/bid-record/*       对齐 src/modules/bid-record/
- *     * /purchaser/risk-analysis/*    对齐 src/modules/risk-analysis/
+ *     * /purchaser/invitation/*      对齐 src/views/purchaser/InvitationForBid/ + BE V18 InvitationForBid 实体名
+ *     * /purchaser/bid-handler-info/* 对齐 src/views/purchaser/BidHandlerInfo/
+ *     * /purchaser/bid-record/*       对齐 src/views/purchaser/BidRecord/
+ *     * /purchaser/risk-analysis/*    对齐 src/views/purchaser/RiskAnalysis/
  *
  * 通配路由选择 404 组件而非 redirect 的原因:
  *   - 明确告知用户"资源不存在",而不是假装没事跳到首页
@@ -33,7 +33,7 @@
  * Supplier/Home.vue 也可改成嵌套布局(layout + 子路由)。
  *
  * ─── Class hierarchy ───
- *   const routes: RouteRecordRaw[]   // 14 条路由(13 业务 + 1 通配 404)
+ *   const routes: RouteRecordRaw[]   // 14 条路由(13 个明确入口 + 1 通配 404)
  *   export const router = createRouter({ history, routes })
  *
  * 关系:

@@ -10,7 +10,7 @@
  *   ⑤ 用户点击 <el-button @click="onSubmit">
  *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
  *   ⑦ onSubmit 内 { ...form } 读取并组装请求体(全必填,无数字兜底)
- *   ⑧ 调用 createBidHandlerInfo(form) → modules/bid-handler-info/api.ts
+ *   ⑧ 调用 createBidHandlerInfo(form) → api/bid-handler-info.ts
  *        的 http.post<Result<BidHandlerInfo>>('/bid-handler-info/add', data)
  *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
  *        + 异步发送通知邮件到 targetEmail

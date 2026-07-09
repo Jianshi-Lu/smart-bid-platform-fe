@@ -19,7 +19,7 @@
  *   ② onMounted() → load(currentPage.value) 初始化第 1 页
  *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
  *   ④ 调用 listInvitationForBids({page, pageSize, sort:'invitation_id desc'})
- *        → modules/invitation-for-bid/api.ts 的 http.get<Result<PageResult<InvitationForBid>>>
+ *        → api/invitation-for-bid.ts 的 http.get<Result<PageResult<InvitationForBid>>>
  *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
  *   ⑥ BE 返回 Result<PageResult<InvitationForBid>>,响应拦截器拆 envelope
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}

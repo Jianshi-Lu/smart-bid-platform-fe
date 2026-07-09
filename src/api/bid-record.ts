@@ -17,7 +17,7 @@
  *   - GET  /bid-record?page=&pageSize=&sort= → listBidRecord (PageHelper 分页)
  *   - POST /bid-record/analyze-risk/{id}    → analyzeRisk (同步 DeepSeek,落库 risk_analysis)
  *
- * 跨模块依赖: RiskAnalysis 类型来自 modules/risk-analysis/types.ts(后端独立 Controller 后
+ * 跨模块依赖: RiskAnalysis 类型来自 types/risk-analysis.ts(后端独立 Controller 后
  *           前端同步分离,bid-record 通过 import 引用,严格单向依赖)。
  *
  * 错误处理: 所有调用都通过拦截器统一包装 ApiError,view 只需 try/catch + instanceof ApiError。

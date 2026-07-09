@@ -7,7 +7,7 @@
  *   ② onMounted() → load(currentPage.value) 初始化第 1 页
  *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
  *   ④ 调用 listBidHandlers({page, pageSize, sort:'bid_handler_id desc'})
- *        → modules/bid-handler-info/api.ts 的 http.get<Result<PageResult<BidHandlerInfo>>>
+ *        → api/bid-handler-info.ts 的 http.get<Result<PageResult<BidHandlerInfo>>>
  *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
  *   ⑥ BE 返回 Result<PageResult<BidHandlerInfo>>,响应拦截器拆 envelope
  *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
@@ -19,7 +19,7 @@
  * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
  *
  * 模块特有: 5 列(ID/姓名/公司/部门/邮箱);
- * pageSize=10 固定,显式覆盖 BE 默认的 3(让 3 模块列表行为一致)。
+ * pageSize=10 固定,显式覆盖 BE 默认的 3(让各业务列表行为一致)。
  *
  * ─── Class hierarchy ───
  *   const rows        = ref<BidHandlerInfo[]>([])  // 当前页数据
