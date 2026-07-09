@@ -36,7 +36,12 @@
 
 | 包 / Package | 版本 / Version | 角色 / Role |
 |---|---|---|
-| `vue` | `^3.5.39` | 唯一运行依赖：响应式框架 + SFC 运行时 / Only runtime dep: reactive framework |
+| `vue` | `^3.5.39` | 响应式框架 + SFC 运行时 / Reactive framework and SFC runtime |
+| `vue-router` | `^5.1.0` | SPA 路由，当前使用 hash 模式 / SPA routing with hash history |
+| `axios` | `^1.18.1` | HTTP 客户端，`src/api/http.ts` 基于它封装拦截器 / HTTP client wrapped by `src/api/http.ts` |
+| `element-plus` | `^2.14.2` | UI 组件库，全局注册表格、表单、分页、弹窗、消息等组件 / UI kit registered globally |
+
+> 代码中还直接 import `@element-plus/icons-vue`。当前它来自 `element-plus` 的传递依赖并出现在 `package-lock.json`，但没有写入 `package.json` 的 direct dependencies；若继续在业务代码中直接引用图标包，建议补充为显式依赖，避免包管理器去重策略变化后构建失败。
 
 > `^` 表示兼容同大版本内的小/补丁更新，不会跨 major。
 > `^` means compatible minor/patch upgrades within the same major version.
@@ -105,6 +110,10 @@ flowchart TB
         direction TB
         VITE["vite build"]:::stage
         PLUGIN["@vitejs/plugin-vue"]:::lib
+        VUE["vue"]:::lib
+        ROUTER["vue-router"]:::lib
+        AXIOS["axios"]:::lib
+        EP["element-plus"]:::lib
     end
 
     %% ===== 配置层 =====
@@ -139,6 +148,10 @@ flowchart TB
 
     VUETSC -- "校验通过" --> VITE
     VITE -->|plugins| PLUGIN
+    VITE -->|bundle runtime| VUE
+    VITE -->|bundle runtime| ROUTER
+    VITE -->|bundle runtime| AXIOS
+    VITE -->|bundle runtime| EP
     VITE -.读取.-> VCFG
     VCFG -.注册插件.-> PLUGIN
     PLUGIN -.处理.-> SFC[".vue SFC<br/>src/**/*.vue"]:::src
@@ -173,6 +186,7 @@ flowchart TB
 | `vite build ⇢ vite.config.ts` | 配置读取 / read | 构建前自动加载项目根的 `vite.config.ts` |
 | `vite.config.ts ⇢ @vitejs/plugin-vue` | 插件注册 / register | 在 `plugins: [vue()]` 中显式注册 |
 | `@vitejs/plugin-vue ⇢ .vue SFC` | 文件处理 / transform | 把 `.vue` 文件拆分为 `<template>/<script>/<style>` 并送入对应编译器 |
+| `vite build → vue / vue-router / axios / element-plus` | 运行依赖打包 / runtime bundle | 业务代码直接或间接 import，生产构建会纳入 `dist` |
 
 ### 5.4 Dev 模式（`npm run dev`）/ Dev Topology
 
@@ -213,7 +227,7 @@ flowchart LR
 | `package-lock.json` | 自动生成 / generated | ✅ **必须** / **must** | 锁死每个传递依赖的精确版本 / Pinned versions |
 | `vite.config.ts` | 人工维护 / hand-edited | ✅ 是 / yes | 构建配置（代理、别名、插件）/ Build config |
 | `tsconfig.json` | 人工维护 / hand-edited | ✅ 是 / yes | 类型入口，references 两份子配置 / TS entry |
-| `tsconfig.app.json` | 人工维护 / hand-edited | ✅ 是 / yes | 业务代码类型规则（src/）/ App code rules |
+| `tsconfig.app.json` | 人工维护 / hand-edited | ✅ 是 / yes | 业务代码类型规则（src/）；TS 6 下用 `ignoreDeprecations: "6.0"` 兼容当前 `baseUrl` + `paths` 写法 / App code rules |
 | `tsconfig.node.json` | 人工维护 / hand-edited | ✅ 是 / yes | 构建脚本类型规则 / Build script rules |
 | `index.html` | 人工维护 / hand-edited | ✅ 是 / yes | Vite 入口 HTML / Vite entry |
 | `node_modules/` | 自动生成 / generated | ❌ 否 / no | 由 `npm install` 还原 / Restored via install |
@@ -223,15 +237,13 @@ flowchart LR
 
 ## 七、待补充 / Future Additions
 
-当前只装了 Vue + Vite 最小集。后续按业务需要会逐步加入：
+当前已接入路由、HTTP 和 Element Plus。后续按业务需要再逐步加入：
 
-- **路由 / Routing**: `vue-router`
 - **状态管理 / State**: `pinia`
-- **HTTP**: `axios`
-- **UI 库 / UI kit**: `element-plus` / `ant-design-vue` / `naive-ui`
 - **代码规范 / Lint**: `eslint` + `@vue/eslint-config-typescript` + `prettier`
 - **Git hooks**: `husky` + `lint-staged`
 - **样式 / Styling**: `sass` 或 `unocss`
+- **图标显式依赖 / Icons direct dependency**: `@element-plus/icons-vue`（当前由传递依赖提供，但业务代码直接 import）
 
 每加一个新包，建议同步在本文件追加其角色与拓扑变化。
 When adding a new package, append its role and topology impact here.
