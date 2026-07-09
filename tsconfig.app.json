@@ -4,6 +4,7 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     // paths 必须配合 baseUrl 使用,@/* 映射到 src/*,与 vite.config.ts 的 alias 保持一致
     "paths": {

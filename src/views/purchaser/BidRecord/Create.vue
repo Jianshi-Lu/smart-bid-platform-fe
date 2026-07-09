@@ -10,7 +10,7 @@
  *   ⑤ 用户点击 <el-button @click="onSubmit">
  *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
  *   ⑦ onSubmit 内 { ...form, invitationId ?? 0 } 读取并组装请求体
- *   ⑧ 调用 createBidRecord(form) → modules/bid-record/api.ts
+ *   ⑧ 调用 createBidRecord(form) → api/bid-record.ts
  *        的 http.post<Result<BidRecord>>('/bid-record/add', data)
  *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
  *        + 自动算 bidNo(同 invitationId+bidderName 下 max+1)与 bidAt(CURRENT_TIMESTAMP)
@@ -25,7 +25,8 @@
  * credentials(资信材料)可选,BE @Size(max=500)。
  *
  * ─── Class hierarchy ───
- *   const form: reactive<AddRequest>    // 5 字段(4 必填 + 1 可选)
+ *   type BidRecordForm = Omit<AddRequest, 'quotePrice'> & { quotePrice?: number }
+ *   const form: reactive<BidRecordForm> // UI 表单态允许 quotePrice 为空,提交时转 AddRequest
  *     - invitationId: null 占位 → 提交时 ?? 0
  *   const submitting = ref(false)
  *   const created    = ref<BidRecord | null>(null)
@@ -48,8 +49,12 @@ import type { AddRequest, BidRecord } from '@/types/bid-record'
 
 const router = useRouter()
 
+type BidRecordForm = Omit<AddRequest, 'quotePrice'> & {
+  quotePrice?: number
+}
+
 // el-input-number 对 0 展示"空",所以用 null 占位,提交时 ?? 0 兜底
-const form = reactive<AddRequest>({
+const form = reactive<BidRecordForm>({
   invitationId: null as unknown as number,
   bidderName: '',
   quotePrice: undefined,
@@ -67,6 +72,7 @@ async function onSubmit() {
     const entity = await createBidRecord({
       ...form,
       invitationId: form.invitationId ?? 0,
+      quotePrice: form.quotePrice ?? 0,
     })
     created.value = entity
     ElMessage.success(

@@ -51,7 +51,8 @@
  *   const invitationId       = computed<number|null>(...)  // 从 query 解析,无效 → 跳列表
  *   const selectedInvitation = ref<InvitationForBid|null>(null)  // 选中公告详情(async 加载)
  *   const loadingInvitation  = ref(false)                      // 选中公告加载中
- *   const form: reactive<AddRequest>                           // 4 字段 + invitationId 占位
+ *   type BidRecordForm = Omit<AddRequest, 'quotePrice'> & { quotePrice?: number }
+ *   const form: reactive<BidRecordForm>                        // UI 表单态允许 quotePrice 为空,提交时转 AddRequest
  *   const submitting = ref(false)
  *   const created    = ref<BidRecord|null>(null)
  *   onMounted → loadSelected()                                 // 选公告 + 校验 id
@@ -82,6 +83,10 @@ import { formatTime, displayOrDash, yesNo } from '@/shared/utils/format'
 const route = useRoute()
 const router = useRouter()
 
+type BidRecordForm = Omit<AddRequest, 'quotePrice'> & {
+  quotePrice?: number
+}
+
 // ——— 选中的公告基本信息(只读展示) ———
 const selectedInvitation = ref<InvitationForBid | null>(null)
 const loadingInvitation = ref(false)
@@ -94,7 +99,7 @@ const invitationId = computed<number | null>(() => {
 })
 
 // ——— 投标表单 ———
-const form = reactive<AddRequest>({
+const form = reactive<BidRecordForm>({
   invitationId: null as unknown as number,
   bidderName: '',
   quotePrice: undefined,
@@ -139,6 +144,7 @@ async function onSubmit() {
     const entity = await createBidRecord({
       ...form,
       invitationId: invitationId.value,
+      quotePrice: form.quotePrice ?? 0,
     })
     created.value = entity
     ElMessage.success(
