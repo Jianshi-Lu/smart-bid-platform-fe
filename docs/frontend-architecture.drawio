@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="opencode">
   <diagram name="前端架构图" id="frontend-architecture">
-    <mxGraphModel dx="1169" dy="733" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="1990" math="0" shadow="0">
+    <mxGraphModel dx="1834" dy="1018" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="1990" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -19,7 +19,7 @@
         <mxCell id="104" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="@vitejs/plugin-vue" vertex="1">
           <mxGeometry height="50" width="150" x="620" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="105" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="vite.config.ts  (5 proxy prefixes → :8080)" vertex="1">
+        <mxCell id="105" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="vite.config.ts  (6 proxy prefixes → :8080)" vertex="1">
           <mxGeometry height="50" width="200" x="870" y="50" as="geometry" />
         </mxCell>
         <mxCell id="106" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" value="tsconfig (3 files)" vertex="1">
@@ -66,7 +66,7 @@
         <mxCell id="301" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="/  →  RoleSelector" vertex="1">
           <mxGeometry height="50" width="150" x="20" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="302" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/purchaser/*  (10 routes)" vertex="1">
+        <mxCell id="302" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/purchaser/*  (9 routes)" vertex="1">
           <mxGeometry height="50" width="180" x="240" y="50" as="geometry" />
         </mxCell>
         <mxCell id="303" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/supplier/*  (3 routes)" vertex="1">
@@ -93,7 +93,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="L4" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="④ 视图层  Views  (14 .vue files)" vertex="1">
+        <mxCell id="L4" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="④ 视图层  Views  (14 route views)" vertex="1">
           <mxGeometry height="580" width="1200" x="40" y="550" as="geometry" />
         </mxCell>
         <mxCell id="L4c" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#f5f5f5;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="common/" vertex="1">
@@ -105,7 +105,7 @@
         <mxCell id="402" parent="L4c" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="NotFound.vue" vertex="1">
           <mxGeometry height="50" width="150" x="200" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="L4p" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="purchaser/  (10 routes)" vertex="1">
+        <mxCell id="L4p" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="purchaser/  (9 routes)" vertex="1">
           <mxGeometry height="250" width="1160" x="20" y="190" as="geometry" />
         </mxCell>
         <mxCell id="411" parent="L4p" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" value="Home.vue  (4 group cards)" vertex="1">
@@ -151,8 +151,8 @@
         <mxCell id="422" parent="L4s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="InvitationList.vue" vertex="1">
           <mxGeometry height="36" width="180" x="200" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="423" parent="L4s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="BidRecordCreate.vue" vertex="1">
-          <mxGeometry height="36" width="200" x="480" y="50" as="geometry" />
+        <mxCell id="423" parent="L4s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="BidRecordCreate.vue&#xa;表单 + CredentialFileUpload" vertex="1">
+          <mxGeometry height="50" width="220" x="480" y="45" as="geometry" />
         </mxCell>
         <mxCell id="e_l4_c1" edge="1" parent="1" source="401" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#666666;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="402" value="404">
           <mxGeometry relative="1" as="geometry" />
@@ -170,16 +170,19 @@
           <mxGeometry height="50" width="170" x="20" y="50" as="geometry" />
         </mxCell>
         <mxCell id="502" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="invitation-for-bid.ts&#xa;POST add / GET list+id&#xa;PATCH id / POST status-update" vertex="1">
-          <mxGeometry height="50" width="190" x="220" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="210" y="50" as="geometry" />
         </mxCell>
         <mxCell id="503" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="bid-handler-info.ts&#xa;POST add&#xa;GET list" vertex="1">
-          <mxGeometry height="50" width="190" x="460" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="400" y="50" as="geometry" />
         </mxCell>
         <mxCell id="504" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="bid-record.ts&#xa;POST add / GET list&#xa;POST analyze-risk/{id}" vertex="1">
-          <mxGeometry height="50" width="190" x="700" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="590" y="50" as="geometry" />
         </mxCell>
         <mxCell id="505" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="risk-analysis.ts&#xa;GET list&#xa;只读" vertex="1">
-          <mxGeometry height="50" width="190" x="940" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="780" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="506" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="credential-file.ts&#xa;POST multipart upload&#xa;DELETE batch/files/{id}" vertex="1">
+          <mxGeometry height="50" width="190" x="970" y="50" as="geometry" />
         </mxCell>
         <mxCell id="e_l5_1" edge="1" parent="1" source="501" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="502" value="">
           <mxGeometry relative="1" as="geometry">
@@ -209,6 +212,9 @@
             </Array>
           </mxGeometry>
         </mxCell>
+        <mxCell id="e_l5_5" edge="1" parent="1" source="501" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="506" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="L6" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#fad7ac;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="⑥ API 契约层  Contract  Types" vertex="1">
           <mxGeometry height="160" width="1200" x="40" y="1330" as="geometry" />
         </mxCell>
@@ -216,16 +222,19 @@
           <mxGeometry height="50" width="170" x="20" y="50" as="geometry" />
         </mxCell>
         <mxCell id="602" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;" value="invitation-for-bid.ts&#xa;Add / Update / List&#xa;BidNoticeStatus" vertex="1">
-          <mxGeometry height="50" width="190" x="220" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="210" y="50" as="geometry" />
         </mxCell>
         <mxCell id="603" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;" value="bid-handler-info.ts" vertex="1">
-          <mxGeometry height="50" width="190" x="460" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="400" y="50" as="geometry" />
         </mxCell>
         <mxCell id="604" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;" value="bid-record.ts&#xa;AddRequest / BidRecord&#xa;bidNo+bidAt BE 自动填" vertex="1">
-          <mxGeometry height="50" width="190" x="700" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="590" y="50" as="geometry" />
         </mxCell>
         <mxCell id="605" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;" value="risk-analysis.ts&#xa;RiskAnalysis / RiskLevel&#xa;由 bid-record 触发生成" vertex="1">
-          <mxGeometry height="50" width="190" x="940" y="50" as="geometry" />
+          <mxGeometry height="50" width="180" x="780" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="606" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11;" value="credential-file.ts&#xa;CredentialFile[]&#xa;UploadResponse(batchId + files[])" vertex="1">
+          <mxGeometry height="50" width="190" x="970" y="50" as="geometry" />
         </mxCell>
         <mxCell id="e_l6_1" edge="1" parent="1" source="601" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#b46504;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="602" value="">
           <mxGeometry relative="1" as="geometry">
@@ -255,17 +264,20 @@
             </Array>
           </mxGeometry>
         </mxCell>
+        <mxCell id="e_l6_5" edge="1" parent="1" source="601" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#b46504;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="606" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="L7" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#f5f5f5;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="⑦ 共享层  Shared" vertex="1">
           <mxGeometry height="160" width="1200" x="40" y="1510" as="geometry" />
         </mxCell>
-        <mxCell id="701" parent="L7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="components/  (空 · 占位)" vertex="1">
-          <mxGeometry height="50" width="150" x="20" y="50" as="geometry" />
+        <mxCell id="701" parent="L7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="shared/components/&#xa;CredentialFileUpload.vue&#xa;选择 / 上传 / 删除 / 状态" vertex="1">
+          <mxGeometry height="60" width="350" x="20" y="45" as="geometry" />
         </mxCell>
         <mxCell id="702" parent="L7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="composables/  (空 · 占位)" vertex="1">
-          <mxGeometry height="50" width="150" x="220" y="50" as="geometry" />
+          <mxGeometry height="50" width="150" x="390" y="50" as="geometry" />
         </mxCell>
         <mxCell id="L7u" parent="L7" style="shape=swimlane;rounded=0;swimlaneFillColor=#e8e8e8;fillColor=none;strokeColor=#666;startSize=24;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;align=left;verticalAlign=top;" value="utils/  (实际文件)" vertex="1">
-          <mxGeometry height="100" width="600" x="420" y="40" as="geometry" />
+          <mxGeometry height="100" width="590" x="570" y="40" as="geometry" />
         </mxCell>
         <mxCell id="704" parent="L7u" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" value="el-tag.ts  (39 行)&#xa;BidNoticeStatus → el-tag color&#xa;RiskLevel → el-tag color" vertex="1">
           <mxGeometry height="60" width="280" x="10" y="30" as="geometry" />
@@ -273,11 +285,11 @@
         <mxCell id="705" parent="L7u" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" value="format.ts&#xa;formatTime / formatPrice&#xa;displayOrDash / yesNo" vertex="1">
           <mxGeometry height="60" width="280" x="300" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="L8" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#f8cecc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="⑧ 后端  Backend" vertex="1">
+        <mxCell id="L8" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#f8cecc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="⑧ 后端  Backend  (当前前端联调边界)" vertex="1">
           <mxGeometry height="150" width="1200" x="40" y="1690" as="geometry" />
         </mxCell>
         <mxCell id="801" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" value="Spring Boot :8080" vertex="1">
-          <mxGeometry height="50" width="180" x="470" y="80" as="geometry" />
+          <mxGeometry height="50" width="180" x="500" y="80" as="geometry" />
         </mxCell>
         <mxCell id="802" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="MySQL" vertex="1">
           <mxGeometry height="50" width="150" x="20" y="80" as="geometry" />
@@ -285,10 +297,16 @@
         <mxCell id="803" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="Spring AI ChatClient" vertex="1">
           <mxGeometry height="50" width="180" x="920" y="80" as="geometry" />
         </mxCell>
+        <mxCell id="804" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="CredentialFileController&#xa;POST upload / DELETE file&#xa;当前返回占位文件项" vertex="1">
+          <mxGeometry height="60" width="240" x="220" y="70" as="geometry" />
+        </mxCell>
         <mxCell id="e_l8_1" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="802" value="JDBC">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e_l8_2" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="803" value="ChatClient.call()">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_l8_3" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="804" value="controller">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="x_1_2" edge="1" parent="1" source="103" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="201" value="npm run dev / build">
@@ -363,6 +381,15 @@
             </Array>
           </mxGeometry>
         </mxCell>
+        <mxCell id="x_4_7f" edge="1" parent="1" source="423" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#666666;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="701" value="使用上传组件">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x_7_5a" edge="1" parent="1" source="701" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#82b366;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="506" value="调用上传/删除 API">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x_7_6a" edge="1" parent="1" source="701" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#b46504;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="606" value="使用文件契约">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="x_5_6_sum" edge="1" parent="1" source="501" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#b46504;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="601" value="import types">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
@@ -405,6 +432,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
+        <mxCell id="x_5_8f" edge="1" parent="1" source="506" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="804" value="Vite proxy">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-600" y="290" as="offset" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
         <mxCell id="x_6_8" edge="1" parent="1" source="602" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="801" value="FE↔BE 契约">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
@@ -423,6 +457,13 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="-345" y="330" as="offset" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="x_6_8d" edge="1" parent="1" source="606" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#9673a6;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="804" value="FE↔BE 契约">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-600" y="330" as="offset" />
             </Array>
           </mxGeometry>
         </mxCell>

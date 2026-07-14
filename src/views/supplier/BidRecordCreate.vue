@@ -11,6 +11,7 @@
  *   - bid-record/types.ts: AddRequest, BidRecord
  *   - http.ts: ApiError
  *   - element-plus: el-form / el-card / el-descriptions / el-tag / el-input-number
+ *   - shared/components/CredentialFileUpload.vue: 资信材料选择、上传和删除
  *
  * 数据承接载体(本组件 ↔ api ↔ BE):
  *   - 选中公告加载: query.invitationId (string) → number → getInvitationForBid(id) → InvitationForBid
@@ -23,11 +24,11 @@
  *   ④ 渲染 el-descriptions 显示选中公告基本信息(只读,投标方确认目标项目)
  *
  * 数据流转链(提交投标):
- *   ① 用户填表 bidderName / quotePrice / bidderContact / (credentials 可选)
+ *   ① 用户填表 bidderName / quotePrice / bidderContact,在上传组件中选择资信材料
  *   ② v-model 自动写入 form 对应字段(响应式 Proxy)
  *   ③ 用户点击提交按钮 → onSubmit()
  *   ④ 置 submitting=true,清 created
- *   ⑤ 读 form,组装请求体 { ...form, invitationId: fixedId }
+ *   ⑤ 校验资信材料上传状态,读 form,组装请求体 { ...form, invitationId: fixedId }
  *   ⑥ 调用 createBidRecord → bid-record/api.ts 的 http.post<Result<BidRecord>>('/bid-record/add', data)
  *   ⑦ http 实例经 Vite 代理发到 BE 8080
  *   ⑧ BE @Valid 校验 + 写库(bidNo 与 bidAt BE 自动算)
@@ -42,7 +43,7 @@
  *   - bidderName: 投标人名称(必填, BE @Size(max=100))
  *   - quotePrice: 报价(BigDecimal,必填, el-input-number :precision=2 :step=0.01)
  *   - bidderContact: 联系方式(必填, BE @Size(max=255))
- *   - credentials: 资信材料(可选, BE @Size(max=500))
+ *   - 资信材料: CredentialFileUpload 维护上传批次号和文件状态,不写入 credentials 路径
  *
  * 校验: 全部交给 BE (@NotNull/@NotBlank/@Size), FE 不重复。
  *
@@ -51,8 +52,9 @@
  *   const invitationId       = computed<number|null>(...)  // 从 query 解析,无效 → 跳列表
  *   const selectedInvitation = ref<InvitationForBid|null>(null)  // 选中公告详情(async 加载)
  *   const loadingInvitation  = ref(false)                      // 选中公告加载中
- *   type BidRecordForm = Omit<AddRequest, 'quotePrice'> & { quotePrice?: number }
+ *   type BidRecordForm = Omit<AddRequest, 'quotePrice' | 'credentials'> & { quotePrice?: number }
  *   const form: reactive<BidRecordForm>                        // UI 表单态允许 quotePrice 为空,提交时转 AddRequest
+ *   const credentialUploadRef = ref<InstanceType<typeof CredentialFileUpload>|null>(null)
  *   const submitting = ref(false)
  *   const created    = ref<BidRecord|null>(null)
  *   onMounted → loadSelected()                                 // 选公告 + 校验 id
@@ -75,6 +77,7 @@ import { ElMessage } from 'element-plus'
 import { ApiError } from '@/api/http'
 import { getInvitationForBid } from '@/api/invitation-for-bid'
 import { createBidRecord } from '@/api/bid-record'
+import CredentialFileUpload from '@/shared/components/CredentialFileUpload.vue'
 import type { InvitationForBid } from '@/types/invitation-for-bid'
 import type { AddRequest, BidRecord } from '@/types/bid-record'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
@@ -83,7 +86,7 @@ import { formatTime, displayOrDash, yesNo } from '@/shared/utils/format'
 const route = useRoute()
 const router = useRouter()
 
-type BidRecordForm = Omit<AddRequest, 'quotePrice'> & {
+type BidRecordForm = Omit<AddRequest, 'quotePrice' | 'credentials'> & {
   quotePrice?: number
 }
 
@@ -104,11 +107,11 @@ const form = reactive<BidRecordForm>({
   bidderName: '',
   quotePrice: undefined,
   bidderContact: '',
-  credentials: '',
 })
 
 const submitting = ref(false)
 const created = ref<BidRecord | null>(null)
+const credentialUploadRef = ref<InstanceType<typeof CredentialFileUpload> | null>(null)
 
 // ——— 生命周期 ———
 onMounted(async () => {
@@ -138,6 +141,7 @@ async function onSubmit() {
     router.replace('/supplier/invitation/list')
     return
   }
+  if (!credentialUploadRef.value?.validateBeforeSubmit()) return
   submitting.value = true
   created.value = null
   try {
@@ -224,8 +228,10 @@ async function onSubmit() {
           <el-input v-model="form.bidderContact" maxlength="255" show-word-limit />
         </el-form-item>
         <el-form-item label="资信材料">
-          <!-- 可选,BE @Size(max=500) -->
-          <el-input v-model="form.credentials" type="textarea" :rows="2" maxlength="500" show-word-limit />
+          <CredentialFileUpload
+            ref="credentialUploadRef"
+            :disabled="submitting"
+          />
         </el-form-item>
 
         <el-form-item>

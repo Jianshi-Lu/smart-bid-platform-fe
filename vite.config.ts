@@ -13,13 +13,14 @@ export default defineConfig({
     }
   },
   server: {
-    host: true,                       // 绑定 0.0.0.0,支持局域网其它设备通过 IP 访问
+    host: false,                       // 仅监听本机,不对局域网暴露开发服务
     port: 5173,                       // 显式指定端口(默认 5173)
     proxy: {
       '/invitation-for-bid': { target: 'http://localhost:8080', changeOrigin: true },
       '/bid-handler-info':   { target: 'http://localhost:8080', changeOrigin: true },
       '/bid-record':         { target: 'http://localhost:8080', changeOrigin: true },
       '/risk-analysis':      { target: 'http://localhost:8080', changeOrigin: true },
+      '/credential-files':   { target: 'http://localhost:8080', changeOrigin: true },
       '/service-status':     { target: 'http://localhost:8080', changeOrigin: true }
     }
   }
