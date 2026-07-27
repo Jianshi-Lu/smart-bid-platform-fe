@@ -13,7 +13,7 @@
 | `private` | `true` | 私有项目，禁止发布到 npm 公网 / Block accidental publish |
 | `version` | `0.0.0` | 初始版本，迭代后按 semver 升级 / Initial semver |
 | `type` | `module` | 启用 ESM，`vite.config.ts` 与业务代码统一 `import/export` / ES Module mode |
-| `scripts` | dev / build / preview | 启动 / 打包 / 预览 / Run / Bundle / Preview |
+| `scripts` | dev / build / preview / test | 启动 / 打包 / 预览 / 测试 / Run / Bundle / Preview / Test |
 | `dependencies` | 见下 / see below | 运行依赖，**打入 dist** / Runtime libs, bundled into `dist` |
 | `devDependencies` | 见下 / see below | 开发依赖，**不打包** / Dev-only, not shipped |
 
@@ -26,6 +26,7 @@
 | `npm run dev` | `vite` | 启动开发服务器，HMR 热更新 / Dev server with HMR |
 | `npm run build` | `vue-tsc -b && vite build` | 类型校验 + 打包输出 `dist/` / Type-check then bundle |
 | `npm run preview` | `vite preview` | 本地预览已构建的 `dist/` 产物 / Preview built artifacts |
+| `npm test` | `vitest run` | 单次运行单元测试，供本地与 CI 校验 / Run unit tests once |
 
 > `&&` 的语义：vue-tsc 类型校验**失败则终止**，不会进入 vite build，从源头避免带 bug 上线。
 > `&&` semantics: if type-check fails, build aborts — bugs can't slip into `dist`.
@@ -40,8 +41,7 @@
 | `vue-router` | `^5.1.0` | SPA 路由，当前使用 hash 模式 / SPA routing with hash history |
 | `axios` | `^1.18.1` | HTTP 客户端，`src/api/http.ts` 基于它封装拦截器 / HTTP client wrapped by `src/api/http.ts` |
 | `element-plus` | `^2.14.2` | UI 组件库，全局注册表格、表单、分页、弹窗、消息等组件 / UI kit registered globally |
-
-> 代码中还直接 import `@element-plus/icons-vue`。当前它来自 `element-plus` 的传递依赖并出现在 `package-lock.json`，但没有写入 `package.json` 的 direct dependencies；若继续在业务代码中直接引用图标包，建议补充为显式依赖，避免包管理器去重策略变化后构建失败。
+| `@element-plus/icons-vue` | `^2.3.2` | Element Plus 图标组件，业务代码直接 import，因此声明为直接依赖 / Direct icon dependency |
 
 > `^` 表示兼容同大版本内的小/补丁更新，不会跨 major。
 > `^` means compatible minor/patch upgrades within the same major version.
@@ -58,6 +58,7 @@
 | `typescript` | `~6.0.2` | TS 编译器本体，被 vue-tsc 调用 / TS compiler, invoked by vue-tsc |
 | `@vue/tsconfig` | `^0.9.1` | Vue 官方 tsconfig 基线配置，被业务 / 节点配置继承 / Vue-official tsconfig baseline |
 | `@types/node` | `^24.13.2` | Node 24 内置 API 的 TS 类型，用于 `vite.config.ts` / Node 24 type defs |
+| `vitest` | `^4.1.10` | 单元测试运行器，当前覆盖共享分页 composable 与错误文案工具 / Unit test runner |
 
 > `~` 表示仅允许补丁更新，锁在 6.0.x。
 > `~` locks to patch updates only (6.0.x).
@@ -243,7 +244,7 @@ flowchart LR
 - **代码规范 / Lint**: `eslint` + `@vue/eslint-config-typescript` + `prettier`
 - **Git hooks**: `husky` + `lint-staged`
 - **样式 / Styling**: `sass` 或 `unocss`
-- **图标显式依赖 / Icons direct dependency**: `@element-plus/icons-vue`（当前由传递依赖提供，但业务代码直接 import）
+- **覆盖率 / Coverage**: 共享逻辑继续增加后再接入 `@vitest/coverage-v8`
 
 每加一个新包，建议同步在本文件追加其角色与拓扑变化。
 When adding a new package, append its role and topology impact here.

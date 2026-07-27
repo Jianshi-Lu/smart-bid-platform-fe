@@ -18,7 +18,7 @@
  *   - 不暴露 DELETE / PATCH / POST 写端点,新增与删除走数据库手工操作
  *   - AI 触发分析走 BidRecordController.analyzeRisk(副作用为 RiskAnalysisService.persist)
  *
- * 错误处理: 所有调用都通过拦截器统一包装 ApiError,view 只需 try/catch + instanceof ApiError。
+ * 错误处理: 拦截器统一包装 ApiError,调用方通过 getErrorMessage 展示异常。
  *
  * ─── Class hierarchy ───
  *   export function listRiskAnalyses(query: ListRequest): Promise<PageResult<RiskAnalysis>>

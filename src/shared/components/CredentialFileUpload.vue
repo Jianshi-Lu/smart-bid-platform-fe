@@ -11,8 +11,8 @@
 import { computed, readonly, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, FolderOpened, Upload } from '@element-plus/icons-vue'
-import { ApiError } from '@/api/http'
 import { deleteCredentialFile, uploadCredentialFiles } from '@/api/credential-file'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { CredentialFile } from '@/types/credential-file'
 
 type PendingFileStatus = 'SELECTED' | 'UPLOADING' | 'FAILED'
@@ -34,7 +34,9 @@ interface UploadedFile {
 }
 
 const props = withDefaults(defineProps<{
-    /** 禁用整个上传组件,供父页面后续在提交中使用。 */
+    /** 文件所属的投标记录 ID；投标尚未创建时传 null。 */
+    bidRecordId: number | null
+    /** 禁用整个上传组件，供父页面在投标提交中或其他锁定场景使用。 */
     disabled?: boolean
     /** 可选的浏览器文件类型过滤,不传表示不限制。 */
     accept?: string
@@ -51,7 +53,14 @@ const uploadBatchId = ref('')
 const uploading = ref(false)
 const errorMessage = ref('')
 
-// 已选择文件的上传状态
+// 仅允许已落库的正整数投标记录进入上传链路。
+const hasValidBidRecordId = computed(() => {
+    const id = props.bidRecordId
+    return typeof id === 'number' && Number.isInteger(id) && id > 0
+})
+const interactionDisabled = computed(
+    () => props.disabled || !hasValidBidRecordId.value
+)
 const hasSelectedFiles = computed(() => selectedFiles.value.length > 0)
 const hasUploadedFiles = computed(() => uploadedFiles.value.length > 0)
 const hasPendingOrUploadingFiles = computed(
@@ -65,18 +74,11 @@ function formatFileSize(size: number): string {
     return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
 
-// 接收任何类型的异常值，最终返回一个可以展示给用户的字符串。
-function getErrorMessage(error: unknown): string {
-    if (error instanceof ApiError) return `[${error.code}] ${error.message}`
-    return error instanceof Error ? error.message : String(error)
-}
-
-
 // 当父组件不禁用上传组件 或 当前不在上传 ：
 // <input type="file"> DOM 元素已挂载的话 <-> (fileInput.value !== null && fileInput.value !== undefined)：
 // 则调用游览器原生方法，模拟点击并打开文件选择窗口（fileInput 是 Vue 变量，但 fileInput.value 保存的是原生 DOM，此处操作DOM）。
 function openFilePicker() {
-    if (props.disabled || uploading.value) return
+    if (interactionDisabled.value || uploading.value) return
     fileInput.value?.click()
 }
 
@@ -87,7 +89,7 @@ function onFileChange(event: Event) {
     // input当前是原生 DOM 对象，自带浏览器的一系列属性和方法。
     const files = Array.from(input.files ?? []) // input.files为dom属性，表示文件选择框中的文件集合
     input.value = ''
-    if (files.length === 0) return
+    if (interactionDisabled.value || files.length === 0) return
 
     // 清空之前的错误信息
     errorMessage.value = ''
@@ -104,7 +106,7 @@ function onFileChange(event: Event) {
 
 // 当父组件不禁用上传组件 或 当前不在上传：
 function removeSelectedFile(key: string) {
-    if (props.disabled || uploading.value) return
+    if (interactionDisabled.value || uploading.value) return
     // 过滤掉 key 等于指定值的文件，保留其他文件
     selectedFiles.value = selectedFiles.value.filter((item) => item.key !== key)
 }
@@ -112,7 +114,17 @@ function removeSelectedFile(key: string) {
 // 把 selectedFiles 中的待处理文件发给后端，根据后端返回结果，将成功文件移入 uploadedFiles，
 // 将失败或没有返回结果的文件继续保留在 selectedFiles 中。
 async function uploadFiles() {
-    if (props.disabled || uploading.value || !hasSelectedFiles.value) return
+    if (interactionDisabled.value || uploading.value || !hasSelectedFiles.value) return
+
+    const bidRecordId = props.bidRecordId
+    if (
+        typeof bidRecordId !== 'number'
+        || !Number.isInteger(bidRecordId)
+        || bidRecordId <= 0
+    ) {
+        ElMessage.warning('请先提交投标，再上传资信材料')
+        return
+    }
 
     // 进入上传状态
     uploading.value = true
@@ -127,11 +139,11 @@ async function uploadFiles() {
 
     // 调用上传接口
     try {
-        const response = await uploadCredentialFiles( // 后端api
+        const response = await uploadCredentialFiles(
             filesToUpload.map((item) => item.file),
+            bidRecordId,
             uploadBatchId.value || undefined
         )
-
         if (!response.uploadBatchId) {
             throw new Error('上传响应缺少 uploadBatchId')
         }
@@ -167,7 +179,7 @@ async function uploadFiles() {
             ElMessage.success(`上传成功,共 ${uploadedCount} 个文件`)
         }
     } catch (error) { //整体异常处理
-        const message = getErrorMessage(error)
+        const message = getErrorMessage(error, '')
         selectedFiles.value = filesToUpload.map((item) => ({
             ...item,
             status: 'FAILED',
@@ -190,7 +202,7 @@ function getFileId(file: CredentialFile): number | null {
 
 // 删除已上传文件
 async function removeUploadedFile(item: UploadedFile) {
-    if (props.disabled || item.deleting) return
+    if (interactionDisabled.value || uploading.value || item.deleting) return
 
     const fileId = getFileId(item.file)
     if (!uploadBatchId.value || fileId === null) {
@@ -227,7 +239,7 @@ async function removeUploadedFile(item: UploadedFile) {
     } catch (error) {
         item.deleting = false
         item.status = 'UPLOADED'
-        const message = getErrorMessage(error)
+        const message = getErrorMessage(error, '')
         item.errorMessage = message
         errorMessage.value = `删除“${item.file.originalFilename}”失败: ${message}`
         ElMessage.error(errorMessage.value)
@@ -267,13 +279,27 @@ defineExpose({
 <template>
   <!--  HTMLDivElement-->
   <!--  └── HTMLInputElement-->
-  <div class="credential-upload">
+  <div
+    class="credential-upload"
+    :class="{ 'is-disabled': interactionDisabled }"
+    :aria-disabled="interactionDisabled"
+  >
+    <div class="record-context">
+      <span class="record-label">投标记录 ID</span>
+      <el-input
+        class="record-id"
+        :model-value="hasValidBidRecordId ? String(props.bidRecordId) : '提交投标后生成'"
+        disabled
+      />
+    </div>
+
     <input
       ref="fileInput"
       class="file-input"
       type="file"
       multiple
       :accept="props.accept"
+      :disabled="interactionDisabled"
       @change="onFileChange"
     />
 
@@ -288,15 +314,16 @@ defineExpose({
     <!--    │   └── “上传中/上传文件”        动态文本-->
     <!--    └── span.batch-id               原生 DOM，条件显示批次号-->
     <div class="upload-toolbar">
-      <el-button :disabled="props.disabled || uploading" @click="openFilePicker">
+      <el-button :disabled="interactionDisabled || uploading" @click="openFilePicker">
         <el-icon><FolderOpened /></el-icon>
         选择文件
       </el-button>
       <el-button
-        type="primary"
-        :loading="uploading"
-        :disabled="props.disabled || !hasSelectedFiles"
-        @click="uploadFiles"
+          type="primary"
+          :loading="uploading"
+          :disabled="interactionDisabled || !hasSelectedFiles"
+          :title="!hasValidBidRecordId ? '请先提交投标，再上传资信材料' : '上传文件'"
+          @click="uploadFiles"
       >
         <el-icon><Upload /></el-icon>
         {{ uploading ? '上传中...' : '上传文件' }}
@@ -327,7 +354,7 @@ defineExpose({
           <el-button
             text
             type="danger"
-            :disabled="props.disabled || item.status === 'UPLOADING'"
+            :disabled="interactionDisabled || item.status === 'UPLOADING'"
             aria-label="移除待上传文件"
             @click="removeSelectedFile(item.key)"
           >
@@ -354,7 +381,7 @@ defineExpose({
             text
             type="danger"
             :loading="item.deleting"
-            :disabled="props.disabled || getFileId(item.file) === null"
+            :disabled="interactionDisabled || uploading || getFileId(item.file) === null"
             :title="getFileId(item.file) === null ? '后端未返回 fileId,暂时无法删除' : '删除文件'"
             aria-label="删除已上传文件"
             @click="removeUploadedFile(item)"
@@ -368,13 +395,34 @@ defineExpose({
     <el-empty
       v-if="!hasSelectedFiles && !hasUploadedFiles"
       :image-size="48"
-      description="尚未选择资信材料"
+      :description="interactionDisabled ? '提交投标后可选择资信材料' : '尚未选择资信材料'"
     />
   </div>
 </template>
 
 <style scoped>
 .credential-upload {
+  width: 100%;
+}
+
+.credential-upload.is-disabled {
+  color: #909399;
+}
+
+.record-context {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 240px);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.record-label {
+  color: #606266;
+  font-size: 14px;
+}
+
+.record-id {
   width: 100%;
 }
 
@@ -387,6 +435,13 @@ defineExpose({
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .record-context {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 }
 
 .batch-id {

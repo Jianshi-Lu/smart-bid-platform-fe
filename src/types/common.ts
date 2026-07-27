@@ -1,8 +1,10 @@
-/** BE Result<T> 信封。code=200 业务成功,400=参数错,404=不存在,500=服务器错。
- * HTTP 状态几乎总是 200。
+/** BE Result<T> 统一响应信封。
+ * 新版成功响应为 success=true、code=SUCCESS；code 允许保留 number
+ * 以兼容仍使用旧版 code=200 的接口。
  */
 export interface Result<T> {
-    code: number
+    success: boolean
+    code: string | number
     message: string
     data: T
 }
@@ -14,6 +16,16 @@ export interface Result<T> {
 export interface Diff<T> {
     before: T
     after: T
+}
+
+/** 所有 PageHelper 列表端点共享的查询参数。 */
+export interface PageRequest {
+    /** 页号,从 1 开始。 */
+    page?: number
+    /** 每页条数。 */
+    pageSize?: number
+    /** 后端允许的 SQL 排序表达式,例如 `created_at desc`。 */
+    sort?: string
 }
 
 /**
@@ -32,9 +44,10 @@ export interface Diff<T> {
  *     JSON 键为 navigatepageNums (不是 navigatePageNums)
  *
  * ─── Class hierarchy ───
- *   export interface Result<T>     { code, message, data: T }       // BE 业务信封
+ *   export interface Result<T>     { success, code, message, data: T } // BE 业务信封
  *   export interface Diff<T>       { before: T, after: T }          // PATCH 对比
- *   export interface PageResult<T> { 18 字段(见下) }                 // PageHelper 分页
+ *   export interface PageRequest   { page?, pageSize?, sort? }       // PageHelper 查询
+ *   export interface PageResult<T> { 18 字段(见下) }                 // PageHelper 响应
  *
  * 关系:
  *   - api/* 函数:  http.post<Result<InvitationForBid>>(url) → resp.data.data

@@ -1,132 +1,36 @@
 <script setup lang="ts">
 /**
- * 投标记录列表页(PageHelper 分页 + 行内风险分析触发)。
+ * 投标记录分页列表，并提供行内风险分析入口。
  *
- * 文件职责: 表格展示 + 翻页 + 行末"风险分析"按钮触发 AI 分析。
- *
- * 依赖关系:
- *   - api.ts: listBidRecords(列表加载) + analyzeRisk(行内分析)
- *   - bid-record/types.ts: BidRecord(行类型) + ListRequest
- *   - risk-analysis/types.ts: RiskAnalysis(分析结果类型,跨模块依赖)
- *   - http.ts: ApiError(统一错误类型)
- *   - element-plus: el-table / el-pagination / el-button / el-dialog / el-form / el-tag
- *
- * 数据承接载体(本组件 ↔ api ↔ BE):
- *   - 列表加载: ListRequest({page, pageSize, sort}) → PageResult<BidRecord>
- *       其中 rows.value = data.list, currentPage.value = data.pageNum
- *   - 风险分析: BidRecord.bidRecordId → RiskAnalysis 实体 → 弹窗展示
- *
- * 数据流转 11 步链(列表加载):
- *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
- *   ② onMounted() → load(currentPage.value) 初始化第 1 页
- *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
- *   ④ 调用 listBidRecords({page, pageSize, sort:'bid_record_id desc'})
- *        → api/bid-record.ts 的 http.get<Result<PageResult<BidRecord>>>
- *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
- *   ⑥ BE 返回 Result<PageResult<BidRecord>>,响应拦截器拆 envelope
- *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
- *   ⑧ loading=false → <el-table> 渲染 8 列 + 1 操作列 + <el-pagination :total>
- *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → 直接绑 load(page) 触发请求
- *   ⑪ 回到 ③ 循环
- *
- * 风险分析触发链(行内操作):
- *   ① 用户点击行末"风险分析"按钮
- *   ② 触发 onAnalyzeRisk(row),置 analyzingId = row.bidRecordId
- *   ③ UI 反馈: 按钮文本变"分析中..." + :loading 转圈 + 其他行按钮 :disabled
- *   ④ 调用 analyzeRisk(row.bidRecordId) → api/bid-record.ts 的
- *        http.post<Result<RiskAnalysis>>(`/bid-record/analyze-risk/${id}`)
- *   ⑤ http 实例经 Vite 代理发到 BE 8080
- *   ⑥ BE 同步调用 DeepSeek → 解析 JSON → 落库 risk_analysis 表 → 返回最新 RiskAnalysis
- *   ⑦ 拦截器拆 envelope → Promise resolve(analysis 实体)
- *   ⑧ analyzingId 置 null → 按钮恢复
- *   ⑨ ElMessage.success 显示风险等级
- *   ⑩ currentAnalysis = analysis + riskDialogVisible = true
- *   ⑪ el-dialog 弹窗展示 8 字段(分析ID/记录ID/投标人/等级/摘要/建议/版本/时间)
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- *
- * ─── Class hierarchy ───
- *   const rows / total / currentPage / pageSize=10 / loading (ref)
- *   const analyzingId       = ref<number|null>(null)  // 当前正在分析的 bidRecordId,锁定其他行
- *   const riskDialogVisible = ref(false)              // 弹窗可见
- *   const currentAnalysis   = ref<RiskAnalysis|null>(null)  // 弹窗展示实体(单条最新)
- *   function load(page)                                // 列表分页请求(直接绑 el-pagination)
- *   async function onAnalyzeRisk(row)                  // 行末按钮 → POST analyze-risk
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: listBidRecords(query) + analyzeRisk(id)         // 跨模块: 调 risk-analysis 域
- *   - 类型依赖: BidRecord(自有) + RiskAnalysis(从 types/risk-analysis import)
- *   - 跨组件导航: useRouter().push() (返回首页按钮)
- *   - 共享常量: RISK_LEVEL_TYPE (src/shared/utils/el-tag.ts)
- *   - 共享工具: formatPrice / formatTime (src/shared/utils/format.ts)
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
- *   - scoped (本文件 owns): .risk-text (风险摘要/建议等长文本展示样式)
- *
- * 模块特有: 8 列 + 1 操作列;
- * quotePrice 用 formatPrice 兜 2 位小数(避免 JS 浮点尾巴);
- * bidAt 用 formatTime 处理 ISO-8601;
- * credentials 是"资信材料链接",最长 500 字符,
- * 列用 show-overflow-tooltip 截断 + hover 弹完整内容;
- * riskLevel 颜色映射见 RISK_LEVEL_TYPE (LOW/MEDIUM/HIGH/CRITICAL → success/warning/danger/danger)。
- *
- * 并发控制: 同一时刻只能分析一行(analyzingId !== null 时其他行按钮 disabled),
- *          避免结果混淆 / 多个并发 DeepSeek 请求。
+ * usePagedList 负责分页请求；onAnalyzeRisk 以 bidRecordId 调用同步分析接口，
+ * 同一时刻只允许分析一行，成功结果写入 currentAnalysis 后由弹窗展示。
+ * 报价和时间仅在展示层格式化，不修改 API 返回实体。
  */
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { listBidRecords, analyzeRisk } from '@/api/bid-record'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { usePagedList } from '@/shared/composables/usePagedList'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { BidRecord } from '@/types/bid-record'
 import type { RiskAnalysis } from '@/types/risk-analysis'
 import { RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
 import { formatPrice, formatTime } from '@/shared/utils/format'
 
-const router = useRouter()
-
-// ——— 列表状态机 ———
-const rows = ref<BidRecord[]>([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = 10                 // 固定,不开放
-const loading = ref(false)
+const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidRecord>({
+  fetchPage: listBidRecords,
+  sort: 'bid_record_id desc',
+  onError: (error) => ElMessage.error(getErrorMessage(error)),
+})
 
 // ——— 风险分析状态 ———
 const analyzingId = ref<number | null>(null)        // 当前正在分析的 bidRecordId,null 表示无
 const riskDialogVisible = ref(false)                 // 弹窗可见
 const currentAnalysis = ref<RiskAnalysis | null>(null) // 当前展示的分析结果
 
-// ——— 生命周期 ———
 onMounted(() => {
-  load(currentPage.value)
+  void load()
 })
-
-// ——— 列表加载 ———
-async function load(page: number) {
-  loading.value = true
-  try {
-    // 从后端返回获取data字段(包含对应行的数据)
-    const data = await listBidRecords({
-      page,
-      pageSize,
-      sort: 'bid_record_id desc',
-    })
-    // 将数据赋值到rows——供显示组件使用
-    rows.value = data.list
-    total.value = data.total
-    currentPage.value = data.pageNum
-  } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
-    ElMessage.error(msg)
-  } finally {
-    loading.value = false
-  }
-}
 
 // ——— 风险分析触发(行内操作) ———
 async function onAnalyzeRisk(row: BidRecord) {
@@ -142,10 +46,8 @@ async function onAnalyzeRisk(row: BidRecord) {
     // ⑨ UI 反馈分析完成
     ElMessage.success(`风险分析完成,等级=${result.riskLevel}`)
   } catch (e) {
-    // 错误链: ApiError → ElMessage.error
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    // 分析接口异常沿用统一展示文案。
+    const msg = getErrorMessage(e)
     ElMessage.error(msg)
   } finally {
     // ⑧ analyzingId 置 null → 按钮恢复
@@ -156,12 +58,7 @@ async function onAnalyzeRisk(row: BidRecord) {
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">投标记录列表</h2>
-      <div class="page-actions">
-        <el-button @click="router.push('/')">← 返回首页</el-button>
-      </div>
-    </div>
+    <PageHeader title="投标记录列表" back-to="/purchaser" back-label="返回招标方入口" />
 
     <!--声明整张表的数据来源-->
     <el-table

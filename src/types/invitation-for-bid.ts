@@ -9,7 +9,7 @@
  *   export interface InvitationForBid  { 20 字段, 1 必填主键 + 3 必填业务 + 16 可选 + BE 自动填 3 字段 }
  *   export interface AddRequest        { 3 必填 + 15 可选 (18 字段,无 BE 自动填字段) }
  *   export interface UpdateRequest     { 16 字段全可选 (PATCH null=不修改;不包含 status) }
- *   export interface ListRequest       { page?, pageSize?, sort? }
+ *   export type ListRequest = PageRequest
  *
  * 关系:
  *   - AddRequest    是 createInvitationForBid 的入参体
@@ -31,6 +31,8 @@
  *   - deposit 是 BigDecimal,JSON 序列化为 number
  *   - 3 个 deadline 字段是 ISO-8601 字符串
  */
+import type { PageRequest } from '@/types/common'
+
 export type BidNoticeStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'AWARDED' | 'CANCELLED'
 
 /**
@@ -113,17 +115,4 @@ export interface UpdateRequest {
  * BE 默认值: page=1, pageSize=10, sort="invitation_id desc"。
  * 实际请求时 axios 会把 undefined 字段自动剔除,BE 走 defaultValue。
  */
-export interface ListRequest {
-    /** 页号,从 1 开始 */
-    page?: number
-    /** 每页条数 */
-    pageSize?: number
-    /**
-     * 排序参数: SQL 列名 + 空格 + 方向。
-     *
-     * 注意: 这是 SQL 列名(**snake_case**),不是实体属性(camelCase)。
-     * 例: "invitation_id desc" / "created_at asc" / "project_no asc"
-     * BE 透传给 ORDER BY 子句。
-     */
-    sort?: string
-}
+export type ListRequest = PageRequest

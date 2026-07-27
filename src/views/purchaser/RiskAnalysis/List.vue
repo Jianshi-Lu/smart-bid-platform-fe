@@ -1,116 +1,34 @@
 <script setup lang="ts">
 /**
- * 风险分析记录列表页(PageHelper 分页,只读)。
+ * 风险分析历史结果的只读分页列表。
  *
- * 文件职责: 展示所有 AI 风险分析历史结果,支持分页查询。
- *
- * 依赖关系:
- *   - api.ts: listRiskAnalyses(列表加载)
- *   - types.ts: RiskAnalysis(行类型) + ListRequest
- *   - http.ts: ApiError(统一错误类型)
- *   - element-plus: el-table / el-pagination / el-tag
- *
- * 数据承接载体(本组件 ↔ api ↔ BE):
- *   - 列表加载: ListRequest({page, pageSize, sort}) → PageResult<RiskAnalysis>
- *       其中 rows.value = data.list, currentPage.value = data.pageNum
- *
- * 数据流转 11 步链(列表加载):
- *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
- *   ② onMounted() → load(currentPage.value) 初始化第 1 页
- *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
- *   ④ 调用 listRiskAnalyses({page, pageSize, sort:'analysis_id desc'})
- *        → api/risk-analysis.ts 的 http.get<Result<PageResult<RiskAnalysis>>>
- *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
- *   ⑥ BE 返回 Result<PageResult<RiskAnalysis>>,响应拦截器拆 envelope
- *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
- *   ⑧ loading=false → <el-table> 渲染 8 列 + <el-pagination :total>
- *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → 直接绑 load(page) 触发请求
- *   ⑪ 回到 ③ 循环
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- *
- * ─── Class hierarchy ───
- *   const rows        = ref<RiskAnalysis[]>([])  // 当前页数据
- *   const total       = ref(0)                  // 总记录数
- *   const currentPage = ref(1)                  // 当前页号
- *   const pageSize    = 10                      // 固定,不开放
- *   const loading     = ref(false)              // v-loading 状态
- *   function load(page)                         // 触发分页请求(直接绑 el-pagination)
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: listRiskAnalyses(query)         // 单向: 风险模块的读端点
- *   - 跨组件导航: useRouter().push() (返回首页按钮)
- *   - 共享常量: RISK_LEVEL_TYPE (src/shared/utils/el-tag.ts)
- *   - 共享工具: formatTime (src/shared/utils/format.ts)
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
- *   - scoped (本文件 owns): 无
- *
- * 模块特有: 8 列展示(含 riskLevel 用 el-tag 颜色映射);
- * summary / suggestions / promptVersion 用 show-overflow-tooltip 截断;
- * analyzedAt 用 formatTime 处理 ISO-8601;
- * rawResponse 不展示(长度大,UI 不友好);
- * 本模块为只读,无 create/edit/delete;
- * AI 触发分析见 BidRecord 列表的"风险分析"按钮(行内操作)。
+ * usePagedList 负责按 analysis_id 倒序加载。rawResponse 不在列表展示；
+ * 风险分析的生成入口仍位于投标记录列表，本页不触发分析或修改记录。
  */
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { listRiskAnalyses } from '@/api/risk-analysis'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { usePagedList } from '@/shared/composables/usePagedList'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { RiskAnalysis } from '@/types/risk-analysis'
 import { RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
 import { formatTime } from '@/shared/utils/format'
 
-const router = useRouter()
-
-// ——— 状态机 ———
-const rows = ref<RiskAnalysis[]>([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = 10                 // 固定,不开放
-const loading = ref(false)
-
-// ——— 生命周期 ———
-onMounted(() => {
-  load(currentPage.value)
+const { rows, total, currentPage, pageSize, loading, load } = usePagedList<RiskAnalysis>({
+  fetchPage: listRiskAnalyses,
+  sort: 'analysis_id desc',
+  onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
-// ——— 列表加载 ———
-async function load(page: number) {
-  loading.value = true
-  try {
-    // 从后端返回获取data字段(包含对应行的数据)
-    const data = await listRiskAnalyses({
-      page,
-      pageSize,
-      sort: 'analysis_id desc',
-    })
-    // 将数据赋值到rows——供显示组件使用
-    rows.value = data.list
-    total.value = data.total
-    currentPage.value = data.pageNum
-  } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
-    ElMessage.error(msg)
-  } finally {
-    loading.value = false
-  }
-}
+onMounted(() => {
+  void load()
+})
 </script>
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">风险分析列表</h2>
-      <div class="page-actions">
-        <el-button @click="router.push('/')">← 返回首页</el-button>
-      </div>
-    </div>
+    <PageHeader title="风险分析列表" back-to="/purchaser" back-label="返回招标方入口" />
 
     <!--声明整张表的数据来源-->
     <el-table

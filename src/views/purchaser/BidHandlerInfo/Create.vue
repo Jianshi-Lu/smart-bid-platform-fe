@@ -1,51 +1,17 @@
 <script setup lang="ts">
 /**
- * 创建招标经办人表单(Element Plus 版)。
+ * 创建招标经办人表单。
  *
- * 数据流转 11 步链:
- *   ① <script setup>: reactive<AddRequest>(form) 创建内存对象,4 字段
- *   ② <template>: 每个 el-form-item 用 el-input v-model="form.xxx" 双向绑定
- *   ③ 用户在 el-input 中输入内容
- *   ④ v-model 自动把输入写入 form.xxx(form 响应式 Proxy 触发更新)
- *   ⑤ 用户点击 <el-button @click="onSubmit">
- *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
- *   ⑦ onSubmit 内 { ...form } 读取并组装请求体(全必填,无数字兜底)
- *   ⑧ 调用 createBidHandlerInfo(form) → api/bid-handler-info.ts
- *        的 http.post<Result<BidHandlerInfo>>('/bid-handler-info/add', data)
- *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
- *        + 异步发送通知邮件到 targetEmail
- *   ⑩ BE 返回 Result<BidHandlerInfo>,响应拦截器拆 envelope → Promise resolve(entity)
- *   ⑪ created.value = entity → ElMessage.success + <el-card> 展示 JSON
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- * 校验: 全部交给 BE (@NotBlank), FE 不重复。
- *
- * 模块特有: 4 字段全必填,无日期/无数字字段;
- * maxlength 对齐 BE @Size(handlerName:50 / companyName:100 / departmentName:100 / targetEmail:255);
- * 创建后 BE 异步发邮件到 targetEmail,失败不影响创建结果。
- *
- * ─── Class hierarchy ───
- *   const form: reactive<AddRequest>    // 4 字段(全必填)
- *   const submitting = ref(false)
- *   const created    = ref<BidHandlerInfo | null>(null)
- *   async function onSubmit()
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: createBidHandlerInfo(data)
- *   - 跨组件导航: useRouter().push() (返回首页按钮)
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card / .form-actions
- *   - scoped (本文件 owns): .create-form-card / .create-result-card
+ * 四个字段按 AddRequest 原样提交，长度限制与后端 DTO 对齐；必填校验仍以后端为准。
+ * 创建成功后展示返回实体，后端通知邮件异步发送，不影响本页成功状态。
+ * 请求异常统一交给 getErrorMessage 转换为可展示文案。
  */
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { createBidHandlerInfo } from '@/api/bid-handler-info'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { AddRequest, BidHandlerInfo } from '@/types/bid-handler-info'
-
-const router = useRouter()
 
 const form = reactive<AddRequest>({
   handlerName: '',
@@ -65,9 +31,7 @@ async function onSubmit() {
     created.value = entity
     ElMessage.success(`创建成功 ID=${entity.bidHandlerId}`)
   } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    const msg = getErrorMessage(e)
     ElMessage.error(msg)
   } finally {
     submitting.value = false
@@ -77,12 +41,7 @@ async function onSubmit() {
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">创建招标经办人</h2>
-      <div class="page-actions">
-        <el-button @click="router.push('/')">← 返回首页</el-button>
-      </div>
-    </div>
+    <PageHeader title="创建招标经办人" back-to="/purchaser" back-label="返回招标方入口" />
 
     <el-card class="create-form-card page-card">
       <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">
@@ -100,7 +59,7 @@ async function onSubmit() {
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" :loading="submitting" native-type="submit" @click="onSubmit">
+          <el-button type="primary" :loading="submitting" native-type="submit">
             {{ submitting ? '提交中...' : '提交' }}
           </el-button>
         </el-form-item>

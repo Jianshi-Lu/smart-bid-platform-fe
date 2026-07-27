@@ -16,17 +16,22 @@ import type { CredentialFileUploadResponse } from '@/types/credential-file'
  * POST /credential-files/upload 上传一个或多个资信材料文件。
  *
  * FormData 字段:
- *   - files: 一个或多个 File
- *   - uploadBatchId: 追加上传时携带,首次上传省略
+ *  - files: 一个或多个 File
+ *  - bidRecordId: 文件所属的投标记录 ID
+ *  - uploadBatchId: 追加上传时携带，首次上传省略
  *
  * 不手动设置 Content-Type,由浏览器为 multipart boundary 自动生成。
  */
 export function uploadCredentialFiles(
     files: File[],
+    bidRecordId: number,
     uploadBatchId?: string
 ): Promise<CredentialFileUploadResponse> {
     const formData = new FormData()
+
     files.forEach((file) => formData.append('files', file))
+    formData.append('bidRecordId', String(bidRecordId))
+
     if (uploadBatchId) formData.append('uploadBatchId', uploadBatchId)
 
     return http

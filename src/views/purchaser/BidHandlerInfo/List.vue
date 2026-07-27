@@ -1,94 +1,32 @@
 <script setup lang="ts">
 /**
- * 招标经办人列表页(PageHelper 分页)。
+ * 招标经办人分页列表。
  *
- * 数据流转 11 步链:
- *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
- *   ② onMounted() → load(currentPage.value) 初始化第 1 页
- *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
- *   ④ 调用 listBidHandlers({page, pageSize, sort:'bid_handler_id desc'})
- *        → api/bid-handler-info.ts 的 http.get<Result<PageResult<BidHandlerInfo>>>
- *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
- *   ⑥ BE 返回 Result<PageResult<BidHandlerInfo>>,响应拦截器拆 envelope
- *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
- *   ⑧ loading=false → <el-table> 渲染 5 列 + <el-pagination :total>
- *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → 直接绑 load(page) 触发请求
- *   ⑪ 回到 ③ 循环
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- *
- * 模块特有: 5 列(ID/姓名/公司/部门/邮箱);
- * pageSize=10 固定,显式覆盖 BE 默认的 3(让各业务列表行为一致)。
- *
- * ─── Class hierarchy ───
- *   const rows        = ref<BidHandlerInfo[]>([])  // 当前页数据
- *   const total       = ref(0)                    // 总记录数
- *   const currentPage = ref(1)                    // 当前页号
- *   const pageSize    = 10                        // 固定常量(覆盖 BE 默认 3)
- *   const loading     = ref(false)                // v-loading 状态
- *   function load(page)         // 触发分页请求(直接绑 el-pagination)
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: listBidHandlers(query)
- *   - 跨组件导航: useRouter().push() (返回首页按钮)
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
- *   - scoped (本文件 owns): 无
+ * usePagedList 统一维护分页、加载和错误状态，当前页按 bid_handler_id 倒序；
+ * 前端固定 pageSize=10，覆盖后端默认值 3。页面只负责五列业务字段的展示。
  */
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { listBidHandlers } from '@/api/bid-handler-info'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { usePagedList } from '@/shared/composables/usePagedList'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { BidHandlerInfo } from '@/types/bid-handler-info'
 
-const router = useRouter()
-
-// ——— 状态机 ———
-const rows = ref<BidHandlerInfo[]>([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = 10                 // 固定,不开放;FE 显式覆盖 BE 默认的 3
-const loading = ref(false)
-
-// ——— 生命周期 ———
-onMounted(() => {
-  load(currentPage.value)
+const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidHandlerInfo>({
+  fetchPage: listBidHandlers,
+  sort: 'bid_handler_id desc',
+  onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
-// ——— 数据加载 ———
-async function load(page: number) {
-  loading.value = true
-  try {
-    const data = await listBidHandlers({
-      page,
-      pageSize,
-      sort: 'bid_handler_id desc',
-    })
-    rows.value = data.list
-    total.value = data.total
-    currentPage.value = data.pageNum
-  } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
-    ElMessage.error(msg)
-  } finally {
-    loading.value = false
-  }
-}
+onMounted(() => {
+  void load()
+})
 </script>
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">招标经办人列表</h2>
-      <div class="page-actions">
-        <el-button @click="router.push('/')">← 返回首页</el-button>
-      </div>
-    </div>
+    <PageHeader title="招标经办人列表" back-to="/purchaser" back-label="返回招标方入口" />
 
     <el-table
         v-loading="loading"

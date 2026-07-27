@@ -2,7 +2,7 @@
  * 招标经办人模块 API。
  *
  * 通过 http 实例调用,自动应用拦截器(code != 200 转 ApiError)。
- * 调用方只需 try/catch + instanceof ApiError 判错,无需关心 envelope。
+ * 调用方通过 getErrorMessage 统一展示异常,无需关心 envelope。
  *
  * ─── Class hierarchy ───
  *   export function createBidHandlerInfo(data: AddRequest): Promise<BidHandlerInfo>

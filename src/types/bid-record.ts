@@ -14,12 +14,12 @@
  * 注意: 风险分析相关类型(RiskAnalysis)已迁移到 src/types/risk-analysis.ts,
  *       本模块通过 import 引用(BidRecord 列表的"风险分析"按钮 + 弹窗)。
  *
- * 依赖关系: 不依赖任何业务文件,只 import 自有类型。
+ * 依赖关系: 仅依赖 types/common.ts 的通用 PageRequest。
  *
  * ─── Class hierarchy ───
  *   export interface BidRecord   { 8 字段(主键 + 6 必填 + 1 可选) }
  *   export interface AddRequest  { 5 字段(4 必填 + 1 可选;不含 bidNo/bidAt) }
- *   export interface ListRequest { page?, pageSize?, sort? }
+ *   export type ListRequest = PageRequest
  *
  * 关系:
  *   - AddRequest   是 createBidRecord 的入参体
@@ -36,6 +36,7 @@
  *   - credentials(资信材料)可选,BE @Size(max=500)
  *   - 风险分析相关类型已迁移到 risk-analysis 模块,本文件单向 import
  */
+import type { PageRequest } from '@/types/common'
 
 /**
  * 投标记录实体(BE 返回的 JSON 结构)。
@@ -66,17 +67,4 @@ export interface AddRequest {
  * BE 默认值: page=1, pageSize=10, sort="bid_record_id desc"。
  * 实际请求时 axios 会把 undefined 字段自动剔除,BE 走 defaultValue。
  */
-export interface ListRequest {
-    /** 页号,从 1 开始 */
-    page?: number
-    /** 每页条数 */
-    pageSize?: number
-    /**
-     * 排序参数: SQL 列名 + 空格 + 方向。
-     *
-     * 注意: 这是 SQL 列名(**snake_case**),不是实体属性(camelCase)。
-     * 例: "bid_record_id desc" / "quote_price asc" / "bid_at desc"
-     * BE 透传给 ORDER BY 子句。
-     */
-    sort?: string
-}
+export type ListRequest = PageRequest

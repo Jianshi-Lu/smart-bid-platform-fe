@@ -7,7 +7,7 @@
  * ─── Class hierarchy ───
  *   export interface BidHandlerInfo  { 5 字段(主键 + 4 必填) }
  *   export interface AddRequest      { 4 字段(全必填) }
- *   export interface ListRequest     { page?, pageSize?, sort? }
+ *   export type ListRequest = PageRequest
  *
  * 关系:
  *   - AddRequest    是 createBidHandlerInfo 的入参体
@@ -23,6 +23,7 @@
  *   - maxlength 对齐 BE @Size(handlerName:50 / companyName:100 / departmentName:100 / targetEmail:255)
  *   - BE 在 add 后异步发送通知邮件到 targetEmail
  */
+import type { PageRequest } from '@/types/common'
 
 /**
  * 经办人实体(BE 返回的 JSON 结构)。
@@ -49,17 +50,4 @@ export interface AddRequest {
  * BE 默认值: page=1, pageSize=3, sort="bid_handler_id desc"。
  * FE 显式传 pageSize=10 覆盖 BE 默认的 3,与 invitation-for-bid 列表行为一致。
  */
-export interface ListRequest {
-    /** 页号,从 1 开始 */
-    page?: number
-    /** 每页条数 */
-    pageSize?: number
-    /**
-     * 排序参数: SQL 列名 + 空格 + 方向。
-     *
-     * 注意: 这是 SQL 列名(**snake_case**),不是实体属性(camelCase)。
-     * 例: "bid_handler_id desc" / "handler_name asc"
-     * BE 透传给 ORDER BY 子句。
-     */
-    sort?: string
-}
+export type ListRequest = PageRequest

@@ -1,42 +1,17 @@
 <script setup lang="ts">
 /**
- * 编辑招标公告表单(Element Plus 版)。
+ * 编辑招标公告表单。
  *
- * 数据流转:
- *   ① onMounted → loadEntity(): 无效 id → 提示并跳转列表;否则 getInvitationForBid(id) 回填 form
- *   ② 用户在 el-input / el-input-number / el-switch / el-date-picker 中修改
- *   ③ v-model 自动把输入写入 form.xxx
- *   ④ 用户点击 <el-button @click="onSubmit">
- *   ⑤ onSubmit → updateInvitationForBid(id, form) → 提示成功 → goBack()
- *   ⑥ goBack() → router.push('/purchaser/invitation/list')
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- * 校验: 全部交给 BE (@NotNull/@NotBlank), FE 不重复。
- *
- * ─── Class hierarchy ───
- *   const id = computed<number|null>(...)   // URL 参数解析,无效时返回 null
- *   const form: reactive<UpdateRequest>     // 18 字段,全部可选
- *     - bidHandlerId: undefined (PATCH 语义:undefined=该字段不出现在 body → BE 保留原值)
- *   const loading  = ref(false)             // 回填时转圈
- *   const submitting = ref(false)           // 提交按钮 loading
- *   onMounted → loadEntity()                // ① id 校验 + 回填
- *   async function onSubmit()               // ② PATCH 提交
- *   function goBack()                       // 返回列表(供模板按钮 + onSubmit 复用)
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: getInvitationForBid(id) + updateInvitationForBid(id, form)
- *   - 路由: useRoute() 拿 :id; useRouter() 跳回列表
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card / .form-actions
- *   - scoped (本文件 owns):
- *     .edit-form-card   (max-width: 860px; 居中)
+ * 页面从路由读取正整数 id，加载原实体后按 UpdateRequest 提交 PATCH；
+ * 无效 id 或更新成功都会返回公告列表。undefined 字段不进入请求体，保留后端原值。
+ * 请求异常统一交给 getErrorMessage 转换为可展示文案。
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { getInvitationForBid, updateInvitationForBid } from '@/api/invitation-for-bid'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { UpdateRequest } from '@/types/invitation-for-bid'
 
 const route = useRoute()
@@ -108,9 +83,7 @@ async function loadEntity() {
       notes: entity.notes ?? '',
     })
   } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    const msg = getErrorMessage(e)
     ElMessage.error(msg)
   } finally {
     loading.value = false
@@ -134,9 +107,7 @@ async function onSubmit() {
     ElMessage.success(`更新成功 ID=${diff.after.invitationId}`)
     goBack()
   } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    const msg = getErrorMessage(e)
     ElMessage.error(msg)
   } finally {
     submitting.value = false
@@ -146,12 +117,11 @@ async function onSubmit() {
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">编辑招标公告</h2>
-      <div class="page-actions">
-        <el-button @click="goBack">← 返回列表</el-button>
-      </div>
-    </div>
+    <PageHeader
+      title="编辑招标公告"
+      back-to="/purchaser/invitation/list"
+      back-label="返回列表"
+    />
 
     <el-card v-loading="loading" class="edit-form-card page-card">
       <el-form :model="form" label-width="120px">

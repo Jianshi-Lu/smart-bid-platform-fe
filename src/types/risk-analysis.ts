@@ -11,7 +11,7 @@
  *   - rawResponse: DeepSeek 原始 JSON 字符串,长度大,UI 默认不展示
  *   - promptVersion: 提示词版本,可追溯 AI 行为
  *
- * 依赖关系: 不依赖任何业务文件,只 import 自有类型。
+ * 依赖关系: 仅依赖 types/common.ts 的通用 PageRequest。
  *
  * 历史: RiskAnalysis 类型原本定义在 src/types/bid-record.ts(bid-record 列表
  *       的行内"风险分析"按钮需要此类型展示 dialog)。
@@ -21,7 +21,7 @@
  * ─── Class hierarchy ───
  *   export type RiskLevel         (枚举联合: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL')
  *   export interface RiskAnalysis  { 8 字段(主键 + 7 必填/可选);riskLevel 字段用 RiskLevel }
- *   export interface ListRequest   { page?, pageSize?, sort? }
+ *   export type ListRequest = PageRequest
  *
  * 关系:
  *   - ListRequest  是 listRiskAnalyses 的 query 参数
@@ -36,9 +36,10 @@
  *
  * 跨模块依赖:
  *   - 入依赖 (谁引我): types/bid-record.ts (无直接,但 List.vue 通过 types/bid-record 间接)
- *   - 出依赖 (我引谁): 无
+ *   - 出依赖 (我引谁): types/common.ts (PageRequest)
  *   - 严格单向: bid-record → risk-analysis,反之不可
  */
+import type { PageRequest } from '@/types/common'
 
 /**
  * 风险等级枚举(对齐 BE DeepSeek 返回的 riskLevel 字段)。
@@ -70,17 +71,4 @@ export interface RiskAnalysis {
  * BE 默认值: page=1, pageSize=10, sort="analysis_id desc"。
  * 实际请求时 axios 会把 undefined 字段自动剔除,BE 走 defaultValue。
  */
-export interface ListRequest {
-    /** 页号,从 1 开始 */
-    page?: number
-    /** 每页条数 */
-    pageSize?: number
-    /**
-     * 排序参数: SQL 列名 + 空格 + 方向。
-     *
-     * 注意: 这是 SQL 列名(**snake_case**),不是实体属性(camelCase)。
-     * 例: "analysis_id desc" / "risk_level asc" / "analyzed_at desc"
-     * BE 透传给 ORDER BY 子句。
-     */
-    sort?: string
-}
+export type ListRequest = PageRequest

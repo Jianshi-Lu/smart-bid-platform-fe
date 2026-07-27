@@ -1,108 +1,32 @@
 <script setup lang="ts">
 /**
- * 投标项目列表页(/supplier/invitation/list)。
+ * 投标方可投项目分页列表。
  *
- * 文件职责: 投标方查看所有招标公告,选择项目进行投标。
- *
- * 依赖关系:
- *   - api.ts: listInvitationForBids(列表加载)
- *   - types.ts: InvitationForBid(行类型) + BidNoticeStatus(状态枚举) + ListRequest
- *   - http.ts: ApiError(统一错误类型)
- *   - element-plus: el-table / el-pagination / el-button / el-tag
- *
- * 数据承接载体(本组件 ↔ api ↔ BE):
- *   - 列表加载: ListRequest({page, pageSize, sort}) → PageResult<InvitationForBid>
- *       其中 rows.value = data.list, currentPage.value = data.pageNum
- *
- * 数据流转 11 步链(列表加载):
- *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
- *   ② onMounted() → load(currentPage.value) 初始化第 1 页
- *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
- *   ④ 调用 listInvitationForBids({page, pageSize, sort:'invitation_id desc'})
- *        → api/invitation-for-bid.ts 的 http.get<Result<PageResult<InvitationForBid>>>
- *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
- *   ⑥ BE 返回 Result<PageResult<InvitationForBid>>,响应拦截器拆 envelope
- *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
- *   ⑧ loading=false → <el-table> 渲染 7 列 + 1 操作列 + <el-pagination :total>
- *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → 直接绑 load(page) 触发请求
- *   ⑪ 回到 ③ 循环
- *
- * 行内操作链(投标跳转):
- *   ① 用户点击行末"我要投标"按钮
- *   ② onBid(row) → router.push({path, query: {invitationId: String(...)}})
- *   ③ SupplierBidRecordCreate.vue 从 query 读 invitationId,展示选中公告 + 录入表单
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- *
- * ─── Class hierarchy ───
- *   const rows        = ref<InvitationForBid[]>([])  // 当前页数据
- *   const total       = ref(0)                      // 总记录数
- *   const currentPage = ref(1)                      // 当前页号
- *   const pageSize    = 10                          // 固定,不开放
- *   const loading     = ref(false)                  // v-loading 状态
- *   function load(page)                             // 列表分页请求(直接绑 el-pagination)
- *   function onBid(row)                             // 行末"我要投标" → query 传 invitationId
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: listInvitationForBids(query)        // 跨角色复用 purchaser 模块的读端点
- *   - 跨组件导航: useRouter().push() (返回投标方入口 / 投标录入)
- *   - 共享常量: BID_NOTICE_STATUS_TYPE (src/shared/utils/el-tag.ts)
- *   - 共享工具: formatTime (src/shared/utils/format.ts)
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
- *   - scoped (本文件 owns): 无
- *
- * 模块特有: 7 列 + 1 操作列(行末"我要投标"按钮);
- *          状态展示用 el-tag 颜色映射(同 InvitationForBid/List);
- *          不过滤状态(与招标方列表一致,所有状态都展示,前端无变更状态的入口);
- *          操作按钮点击后跳录入页,通过 query 传 invitationId。
+ * 与招标方复用公告查询 API 和 usePagedList，但只暴露查看与“我要投标”。
+ * onBid 通过 query 传递 invitationId，投标录入页负责校验并加载公告详情。
  */
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { listInvitationForBids } from '@/api/invitation-for-bid'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { usePagedList } from '@/shared/composables/usePagedList'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { InvitationForBid } from '@/types/invitation-for-bid'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
 import { formatTime } from '@/shared/utils/format'
 
 const router = useRouter()
 
-// ——— 状态机 ———
-const rows = ref<InvitationForBid[]>([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = 10                 // 固定,不开放
-const loading = ref(false)
-
-// ——— 生命周期 ———
-onMounted(() => {
-  load(currentPage.value)
+const { rows, total, currentPage, pageSize, loading, load } = usePagedList<InvitationForBid>({
+  fetchPage: listInvitationForBids,
+  sort: 'invitation_id desc',
+  onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
-// ——— 列表加载 ———
-async function load(page: number) {
-  loading.value = true
-  try {
-    const data = await listInvitationForBids({
-      page,
-      pageSize,
-      sort: 'invitation_id desc',
-    })
-    rows.value = data.list
-    total.value = data.total
-    currentPage.value = data.pageNum
-  } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
-    ElMessage.error(msg)
-  } finally {
-    loading.value = false
-  }
-}
+onMounted(() => {
+  void load()
+})
 
 // ——— 行内操作:跳转到投标录入(query 传 invitationId) ———
 function onBid(row: InvitationForBid) {
@@ -115,12 +39,7 @@ function onBid(row: InvitationForBid) {
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">投标项目列表</h2>
-      <div class="page-actions">
-        <el-button @click="router.push('/supplier')">← 返回投标方入口</el-button>
-      </div>
-    </div>
+    <PageHeader title="投标项目列表" back-to="/supplier" back-label="返回投标方入口" />
 
     <!--声明整张表的数据来源-->
     <el-table

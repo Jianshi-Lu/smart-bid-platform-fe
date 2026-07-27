@@ -1,53 +1,17 @@
 <script setup lang="ts">
 /**
- * 创建招标公告表单(Element Plus 版)。
+ * 创建招标公告表单。
  *
- * 数据流转 11 步链:
- *   ① <script setup>: reactive<AddRequest>(form) 创建内存对象,18 字段
- *   ② <template>: 每个 el-form-item 用 el-input v-model="form.xxx" 双向绑定
- *   ③ 用户在 el-input / el-input-number / el-switch / el-date-picker 中输入
- *   ④ v-model 自动把输入写入 form.xxx(form 响应式 Proxy 触发更新)
- *   ⑤ 用户点击 <el-button @click="onSubmit">
- *   ⑥ 触发 onSubmit(): 置 submitting=true, 清 created
- *   ⑦ onSubmit 内 { ...form, bidHandlerId ?? 0 } 读取并组装请求体
- *   ⑧ 调用 createInvitationForBid(form) → api/invitation-for-bid.ts
- *        的 http.post<Result<InvitationForBid>>('/invitation-for-bid/add', data)
- *   ⑨ http 实例经 Vite 代理把 JSON 发到 BE 8080,BE @Valid 校验 + 写库
- *   ⑩ BE 返回 Result<InvitationForBid>,响应拦截器拆 envelope → Promise resolve(entity)
- *   ⑪ created.value = entity → ElMessage.success + <el-card> 展示 JSON
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- * 校验: 全部交给 BE (@NotNull/@NotBlank), FE 不重复。
- *
- * 模块特有: 3 必填(bidHandlerId/projectNo/purchaseTaskNo) + 15 可选;
- * 含 3 个 el-date-picker,value-format="YYYY-MM-DDTHH:mm:ss" 匹配 BE ISO-8601;
- * deposit(BigDecimal)用 el-input-number :precision="2" :step="0.01"。
- *
- * ─── Class hierarchy ───
- *   const form: reactive<AddRequest>    // 18 字段绑定到 v-model
- *     - bidHandlerId: null 占位,提交时 ?? 0 (el-input-number 对 0 展示"空")
- *   const submitting = ref(false)        // 提交按钮 loading
- *   const created    = ref<InvitationForBid | null>(null)  // BE 返回实体展示
- *   async function onSubmit()            // 1) 置 submitting 2) 调 api 3) 提示/展示
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: createInvitationForBid(data)
- *   - 跨组件导航: useRouter().push() (返回首页按钮)
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-card / .form-actions
- *   - scoped (本文件 owns):
- *     .create-form-card    (max-width: 860px; 居中)
- *     .create-result-card  (max-width: 860px; margin-top: 16px)
+ * 表单字段对齐 AddRequest；bidHandlerId 的空 UI 状态在提交前回落为 0，
+ * 三个日期字段按 ISO-8601 字符串发送，金额保留两位小数。
+ * 必填与业务校验以后端 DTO 为准，请求异常统一交给 getErrorMessage 展示。
  */
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { createInvitationForBid } from '@/api/invitation-for-bid'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { AddRequest, InvitationForBid } from '@/types/invitation-for-bid'
-
-const router = useRouter()
 
 // el-input-number 对 0 展示"空",所以用 null 占位,提交时 ?? 0 兜底
 const form = reactive<AddRequest>({
@@ -85,9 +49,7 @@ async function onSubmit() {
     created.value = entity
     ElMessage.success(`创建成功 ID=${entity.invitationId} 状态=${entity.status}`)
   } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    const msg = getErrorMessage(e)
     ElMessage.error(msg)
   } finally {
     submitting.value = false
@@ -97,12 +59,7 @@ async function onSubmit() {
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">创建招标公告</h2>
-      <div class="page-actions">
-        <el-button @click="router.push('/')">← 返回首页</el-button>
-      </div>
-    </div>
+    <PageHeader title="创建招标公告" back-to="/purchaser" back-label="返回招标方入口" />
 
     <el-card class="create-form-card page-card">
       <el-form :model="form" label-width="120px">

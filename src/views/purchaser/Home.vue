@@ -111,6 +111,7 @@ const groups: HomeGroup[] = [
             <el-col
                 v-for="(g, i) in groups"
                 :key="i"
+                class="group-column"
                 :xs="24"
                 :sm="12"
                 :md="12"
@@ -160,6 +161,9 @@ const groups: HomeGroup[] = [
 .subtitle {
     color: #999;
     margin: 0 0 24px;
+}
+.group-column {
+    margin-bottom: 20px;
 }
 .group-card {
     height: 100%;

@@ -1,41 +1,32 @@
 <script setup lang="ts">
 /**
- * 应用角色选择器(根路由 /)。
- *
- * 设计意图:
- *   1. 进站先选择角色(招标方 / 投标方),后续按角色分流到对应入口
- *   2. 2 大卡响应式布局(:xs=24, :md=10, :lg=8),小屏 1 列、中大屏 2 列
- *   3. 卡片整体可点击跳转,鼠标 hover 抬升
- *
- * 当前状态:
- *   - 招标方(/purchaser): 已实现,完整功能(原 Home.vue 的 7 entries)
- *   - 投标方(/supplier): 占位,等待后续实现
- *
- * 未来加角色入口的姿势:SupplierHome.vue 实现后,在 RoleSelector
- * 移除 disabled 样式即可;若加新角色(如审计员/管理员),同样加一张 el-card。
- *
- * ─── Class hierarchy ───
- *   - exports: 无
- *   - props: 无
- *   - state: 无 (纯展示页,2 张 el-card 直接绑 go())
- *   - 跨组件导航: useRouter().push() (招标方 / 投标方入口)
- *
- * ─── Style dependencies ───
- *   - global (style.css): 无
- *   - scoped (本文件 owns):
- *     .role-selector / .role-selector-header / .role-selector-header h1
- *     .role-selector-header .subtitle
- *     .role-cards / .role-card / .role-card:hover (含 translateY(-2px))
- *     .role-icon / .role-card h2 / .role-card p
+ * 根路由的角色选择页。角色入口由 roles 配置驱动，并使用 router-link 保留链接语义。
+ * 新增角色时需要同时追加入口配置和对应路由。
  */
-import { useRouter } from 'vue-router'
+import type { Component } from 'vue'
 import { Document, ShoppingCart } from '@element-plus/icons-vue'
 
-const router = useRouter()
-
-function go(path: string) {
-  router.push(path)
+interface RoleEntry {
+  title: string
+  description: string
+  path: string
+  icon: Component
 }
+
+const roles: RoleEntry[] = [
+  {
+    title: '招标方入口',
+    description: '公告管理 / 经办人管理 / 投标记录 / 风险分析',
+    path: '/purchaser',
+    icon: Document,
+  },
+  {
+    title: '投标方入口',
+    description: '浏览招标项目 / 提交投标',
+    path: '/supplier',
+    icon: ShoppingCart,
+  },
+]
 </script>
 
 <template>
@@ -46,20 +37,23 @@ function go(path: string) {
         </header>
 
         <el-row :gutter="32" justify="center">
-            <el-col :xs="24" :md="10" :lg="8">
-                <el-card class="role-card" shadow="hover" @click="go('/purchaser')">
-                    <el-icon :size="64" class="role-icon"><Document /></el-icon>
-                    <h2>招标方入口</h2>
-                    <p class="description">公告管理 / 经办人管理 / 投标记录 / 风险分析</p>
-                </el-card>
-            </el-col>
-
-            <el-col :xs="24" :md="10" :lg="8">
-                <el-card class="role-card" shadow="hover" @click="go('/supplier')">
-                    <el-icon :size="64" class="role-icon"><ShoppingCart /></el-icon>
-                    <h2>投标方入口</h2>
-                    <p class="description"></p>
-                </el-card>
+            <el-col
+                v-for="role in roles"
+                :key="role.path"
+                class="role-column"
+                :xs="24"
+                :md="10"
+                :lg="8"
+            >
+                <router-link :to="role.path" class="role-link">
+                    <el-card class="role-card" shadow="hover">
+                        <el-icon :size="64" class="role-icon">
+                            <component :is="role.icon" />
+                        </el-icon>
+                        <h2>{{ role.title }}</h2>
+                        <p class="description">{{ role.description }}</p>
+                    </el-card>
+                </router-link>
             </el-col>
         </el-row>
     </div>
@@ -90,8 +84,25 @@ function go(path: string) {
     margin: 0;
 }
 
+.role-column {
+    margin-bottom: 24px;
+}
+
+.role-link {
+    display: block;
+    height: 100%;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 8px;
+}
+
+.role-link:focus-visible {
+    outline: 2px solid var(--el-color-primary);
+    outline-offset: 3px;
+}
+
 .role-card {
-    cursor: pointer;
+    height: 100%;
     text-align: center;
     padding: 40px 24px;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -102,18 +113,9 @@ function go(path: string) {
     transform: translateY(-4px);
 }
 
-.role-card-disabled {
-    cursor: pointer;
-    opacity: 0.85;
-}
-
 .role-icon {
     color: #409eff;
     margin-bottom: 20px;
-}
-
-.role-card-disabled .role-icon {
-    color: #c0c4cc;
 }
 
 .role-card h2 {
@@ -121,10 +123,6 @@ function go(path: string) {
     font-size: 22px;
     font-weight: 600;
     color: #303133;
-}
-
-.role-card-disabled h2 {
-    color: #909399;
 }
 
 .role-card .description {

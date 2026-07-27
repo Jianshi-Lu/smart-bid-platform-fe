@@ -1,71 +1,28 @@
 <script setup lang="ts">
 /**
- * 招标公告列表页(PageHelper 分页)。
+ * 招标公告分页列表。
  *
- * 数据流转 11 步链:
- *   ① <script setup>: 声明状态 rows / total / currentPage / pageSize(=10) / loading
- *   ② onMounted() → load(currentPage.value) 初始化第 1 页
- *   ③ load(page) 置 loading=true → <el-table v-loading> 转圈
- *   ④ 调用 listInvitationForBids({page, pageSize, sort:'invitation_id desc'})
- *        → api/invitation-for-bid.ts 的 http.get<Result<PageResult<InvitationForBid>>>
- *   ⑤ http 实例经 Vite 代理发到 BE 8080,BE PageHelper 查分页
- *   ⑥ BE 返回 Result<PageResult<InvitationForBid>>,响应拦截器拆 envelope
- *   ⑦ rows.value / total.value / currentPage.value = data.{list, total, pageNum}
- *   ⑧ loading=false → <el-table> 渲染 7 列 + <el-pagination :total>
- *   ⑨ 用户点击 <el-pagination> 跳页
- *   ⑩ @current-change → 直接绑 load(page) 触发请求
- *   ⑪ 回到 ③ 循环
- *
- * 错误链(任一步骤抛错): ApiError(code,msg) → catch → ElMessage.error(`[${code}] ${msg}`)
- *
- * 模块特有: 7 列展示(含 status 用 el-tag 按 BidNoticeStatus 映射颜色);
- * createdAt 用 formatTime 处理 ISO-8601 字符串;
- * pageSize=10 固定(覆盖 BE 默认)。
- *
- * ─── Class hierarchy ───
- *   const rows        = ref<InvitationForBid[]>([])         // 当前页数据
- *   const total       = ref(0)                              // 总记录数
- *   const currentPage = ref(1)                              // 当前页号
- *   const pageSize    = 10                                  // 常量(不开放)
- *   const loading     = ref(false)                          // v-loading 状态
- *   const statusDialogVisible = ref(false)                  // 状态修改弹窗开关
- *   const statusTarget        = ref<InvitationForBid|null>(null)  // 当前编辑目标行
- *   const selectedStatus      = ref<BidNoticeStatus>('DRAFT') // 弹窗内下拉选中值
- *   const statusSubmitting    = ref(false)                  // 弹窗提交中标志
- *   const allStatuses: BidNoticeStatus[]                     // 弹窗下拉枚举项
- *   function load(page)             // 触发分页请求(直接绑 el-pagination)
- *   function onEdit(row)            // 跳转编辑页
- *   function onChangeStatus(row)    // 打开状态修改弹窗(填入目标与初始值)
- *   function onStatusCancel()       // 关闭弹窗并清理
- *   function onStatusConfirm()      // 提交新状态,关闭并 reload 当前页
- *   - exports: 无
- *   - props: 无
- *   - api 依赖: listInvitationForBids(query), updateInvitationForBidStatus(id, status)
- *   - 跨组件导航: useRouter().push() (返回首页 + 跳转编辑页)
- *   - 共享常量: BID_NOTICE_STATUS_TYPE (src/shared/utils/el-tag.ts)
- *   - 共享工具: formatTime (src/shared/utils/format.ts)
- *
- * ─── Style dependencies ───
- *   - global (style.css): .page / .page-header / .page-title / .page-actions / .page-pagination
- *   - scoped (本文件 owns): 无
+ * usePagedList 负责按 invitation_id 倒序加载；页面保留编辑跳转和状态修改业务。
+ * 状态更新成功后重新加载当前页，避免只修改前端行对象造成服务端状态不一致。
  */
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ApiError } from '@/api/http'
 import { listInvitationForBids, updateInvitationForBidStatus } from '@/api/invitation-for-bid'
+import PageHeader from '@/shared/components/PageHeader.vue'
+import { usePagedList } from '@/shared/composables/usePagedList'
+import { getErrorMessage } from '@/shared/utils/error'
 import type { BidNoticeStatus, InvitationForBid } from '@/types/invitation-for-bid'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
 import { formatTime } from '@/shared/utils/format'
 
 const router = useRouter()
 
-// ——— 状态机 ———
-const rows = ref<InvitationForBid[]>([])
-const total = ref(0)
-const currentPage = ref(1)
-const pageSize = 10                 // 固定,不开放
-const loading = ref(false)
+const { rows, total, currentPage, pageSize, loading, load } = usePagedList<InvitationForBid>({
+  fetchPage: listInvitationForBids,
+  sort: 'invitation_id desc',
+  onError: (error) => ElMessage.error(getErrorMessage(error)),
+})
 
 // ——— 状态修改弹窗 ———
 const statusDialogVisible = ref(false)
@@ -76,32 +33,9 @@ const statusSubmitting = ref(false)
 // 全部可选状态(用于下拉)
 const allStatuses: BidNoticeStatus[] = ['DRAFT', 'PUBLISHED', 'CLOSED', 'AWARDED', 'CANCELLED']
 
-// ——— 生命周期 ———
 onMounted(() => {
-  load(currentPage.value)
+  void load()
 })
-
-// ——— 数据加载 ———
-async function load(page: number) {
-  loading.value = true
-  try {
-    const data = await listInvitationForBids({
-      page,
-      pageSize,
-      sort: 'invitation_id desc',
-    })
-    rows.value = data.list
-    total.value = data.total
-    currentPage.value = data.pageNum
-  } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
-    ElMessage.error(msg)
-  } finally {
-    loading.value = false
-  }
-}
 
 // ——— 编辑按钮:跳转到编辑页 ———
 function onEdit(row: InvitationForBid) {
@@ -135,9 +69,7 @@ async function onStatusConfirm() {
     // 刷新当前页
     await load(currentPage.value)
   } catch (e) {
-    const msg = e instanceof ApiError
-        ? `[${e.code}] ${e.message}`
-        : `请求失败: ${(e as Error)?.message ?? String(e)}`
+    const msg = getErrorMessage(e)
     ElMessage.error(msg)
   } finally {
     statusSubmitting.value = false
@@ -147,12 +79,7 @@ async function onStatusConfirm() {
 
 <template>
   <div class="page">
-    <div class="page-header">
-      <h2 class="page-title">招标公告列表</h2>
-      <div class="page-actions">
-        <el-button @click="router.push('/')">← 返回首页</el-button>
-      </div>
-    </div>
+    <PageHeader title="招标公告列表" back-to="/purchaser" back-label="返回招标方入口" />
 
     <el-table
         v-loading="loading"
