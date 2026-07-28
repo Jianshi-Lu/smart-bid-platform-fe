@@ -230,7 +230,7 @@
         <mxCell id="803" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="Spring AI ChatClient" vertex="1">
           <mxGeometry height="50" width="180" x="920" y="85" as="geometry" />
         </mxCell>
-        <mxCell id="804" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="CredentialFileController&#xa;upload / delete&#xa;bidRecordId + fileId 待完善" vertex="1">
+        <mxCell id="804" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="FileUploadController / FileConvertController&#xa;upload / convert / delete&#xa;bidRecordId 已接入" vertex="1">
           <mxGeometry height="40" width="280" x="250" y="35" as="geometry" />
         </mxCell>
         <mxCell id="e_l8_1" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="802" value="JDBC">
