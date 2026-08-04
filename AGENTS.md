@@ -95,7 +95,7 @@ api/{module} → api/http.ts → shared/errors/api-error.ts
 | 路径 | 页面/职责 |
 |---|---|
 | `/` | `views/common/RoleSelector.vue`，选择招标方或投标方 |
-| `/purchaser` | 招标方首页，4 个模块卡片 |
+| `/purchaser` | 招标方首页，4 个业务模块卡片及单轮问答面板 |
 | `/purchaser/invitation/list` | 招标公告分页列表 |
 | `/purchaser/invitation/create` | 创建招标公告 |
 | `/purchaser/invitation/edit/:id` | 编辑招标公告 |
@@ -113,7 +113,7 @@ api/{module} → api/http.ts → shared/errors/api-error.ts
 
 ## 5. Java 后端契约与 API 模块
 
-当前前端 API 层共有 14 个函数，按模块分组；这不是 Java 后端的全部端点。
+当前前端 API 层共有 15 个函数，按模块分组；这不是 Java 后端的全部端点。
 
 | 前端模块 | API 函数/端点 | 页面调用方 |
 |---|---|---|
@@ -122,6 +122,7 @@ api/{module} → api/http.ts → shared/errors/api-error.ts
 | 投标记录 | 创建、按 ID 查询、分页查询、`POST /bid-record/analyze-risk/{id}`，共 4 个 | 招标方投标页面；投标方录入复用创建 |
 | 风险分析 | `GET /risk-analysis` 分页查询历史，共 1 个 | 招标方风险分析列表 |
 | 资信文件 | `POST /credential-files/upload`、`DELETE /credential-files/{uploadBatchId}/files/{fileId}`，共 2 个 | `CredentialFileUpload.vue` |
+| chat-agent | `POST /chat-agent/chat`，共 1 个 | `ChatAgentPanel.vue` |
 
 风险分析按钮位于投标记录 API/页面，但 Java 当前实际由 `RiskAnalysisController` 承载风险分析入口；前端只把它视为同步 HTTP 操作，不直接参与转换、Markdown 汇总或模型调用。
 
@@ -133,6 +134,7 @@ Vite 开发代理把以下前缀转发到 `http://localhost:8080`，浏览器不
 /bid-record
 /risk-analysis
 /credential-files
+/chat-agent
 /service-status
 ```
 

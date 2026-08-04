@@ -10,6 +10,7 @@
  *   - 招标经办人:列表 + 创建
  *   - 投标记录:列表 + 创建
  *   - 风险分析:仅列表(由投标列表的"风险分析"按钮触发生成)
+ *   - 首页下方:ChatAgentPanel 单轮问答
  *
  * 加新模块: 往 groups 数组追加一个对象,模板无需改动。
  *
@@ -42,6 +43,8 @@ import {
     Plus,
     User,
 } from '@element-plus/icons-vue'
+import ChatAgentPanel from '@/shared/components/ChatAgentPanel.vue'
+import KnowledgeFileUploadPanel from '@/views/purchaser/components/KnowledgeFileUploadPanel.vue'
 
 interface HomeAction {
     /** 子项标签, e.g. '公告列表' */
@@ -145,6 +148,8 @@ const groups: HomeGroup[] = [
                 </el-card>
             </el-col>
         </el-row>
+        <KnowledgeFileUploadPanel />
+        <ChatAgentPanel />
     </div>
 </template>
 
