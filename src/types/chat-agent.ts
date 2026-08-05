@@ -11,12 +11,14 @@ export interface ChatResponse {
     requestId: string
     clientMessageId: string
     answer: string
+    title?: string | null
 }
 
 /** 前端新建和切换会话所需的最小视图。 */
 export interface Conversation {
     conversationId: string
     title: string
+    titleSource: string
     status: string
     lastMessageAt: string | null
     createdAt: string

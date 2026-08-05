@@ -5,13 +5,15 @@
  * 当前维护会话 ID、会话列表、历史消息和请求状态；不直接连接 Python 服务。
  */
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { ChatDotRound, Promotion } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ChatDotRound, Check, Close, Delete, EditPen, Promotion } from '@element-plus/icons-vue'
 import {
     askChatAgent,
     createChatConversation,
+    deleteChatConversation,
     listChatConversationMessages,
     listChatConversations,
+    renameChatConversation,
 } from '@/api/chat-agent'
 import type { ChatMessage, Conversation } from '@/types/chat-agent'
 import { getErrorMessage } from '@/shared/utils/error'
@@ -32,6 +34,11 @@ const canSubmit = computed(() =>
     && !conversationLoading.value
     && conversationId.value !== null,
 )
+const currentTitle = computed(() =>
+    conversations.value.find((c) => c.conversationId === conversationId.value)?.title ?? '新对话',
+)
+const editingTitle = ref(false)
+const draftTitle = ref('')
 
 function createClientMessageId(): string {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -57,6 +64,77 @@ async function startNewConversation() {
         ElMessage.error(getErrorMessage(error))
     } finally {
         conversationLoading.value = false
+    }
+}
+
+function startEditingTitle() {
+    draftTitle.value = currentTitle.value
+    editingTitle.value = true
+}
+
+function cancelEditingTitle() {
+    editingTitle.value = false
+    draftTitle.value = ''
+}
+
+async function saveTitle() {
+    const normalizedTitle = draftTitle.value.trim()
+    if (!normalizedTitle || !conversationId.value) return
+
+    try {
+        const updated = await renameChatConversation(
+            conversationId.value,
+            normalizedTitle,
+        )
+        const index = conversations.value.findIndex(
+            (c) => c.conversationId === updated.conversationId,
+        )
+        if (index !== -1) {
+            conversations.value[index] = updated
+        }
+        editingTitle.value = false
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error))
+    }
+}
+
+async function deleteCurrentConversation() {
+    if (!conversationId.value || loading.value || conversationLoading.value) return
+
+    try {
+        await ElMessageBox.confirm(
+            '删除后会话将从列表移除，历史消息保留在服务端。确定删除吗？',
+            '删除会话',
+            {
+                type: 'warning',
+                confirmButtonText: '删除',
+                cancelButtonText: '取消',
+            },
+        )
+    } catch {
+        return
+    }
+
+    const deletedId = conversationId.value
+    try {
+        await deleteChatConversation(deletedId)
+        conversations.value = conversations.value.filter(
+            (c) => c.conversationId !== deletedId,
+        )
+        messages.value = []
+        answer.value = ''
+        question.value = ''
+        conversationId.value = null
+        pendingClientMessageId.value = null
+        pendingQuestion.value = null
+        editingTitle.value = false
+        if (conversations.value.length > 0) {
+            await selectConversation(conversations.value[0].conversationId)
+        } else {
+            await startNewConversation()
+        }
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error))
     }
 }
 
@@ -132,6 +210,17 @@ async function submit() {
             question: normalizedQuestion,
         })
         answer.value = response.answer
+        if (response.title && conversationId.value) {
+            const index = conversations.value.findIndex(
+                (c) => c.conversationId === conversationId.value,
+            )
+            if (index !== -1) {
+                conversations.value[index] = {
+                    ...conversations.value[index],
+                    title: response.title,
+                }
+            }
+        }
         pendingClientMessageId.value = null
         pendingQuestion.value = null
         try {
@@ -191,6 +280,50 @@ onMounted(() => {
             >
                 新建会话
             </el-button>
+        </div>
+
+        <div v-if="conversationId" class="conversation-title-row">
+            <template v-if="editingTitle">
+                <el-input
+                    v-model="draftTitle"
+                    class="title-input"
+                    maxlength="200"
+                    placeholder="输入新标题"
+                    @keyup.enter="saveTitle"
+                />
+                <el-button
+                    type="primary"
+                    :icon="Check"
+                    circle
+                    size="small"
+                    @click="saveTitle"
+                />
+                <el-button
+                    :icon="Close"
+                    circle
+                    size="small"
+                    @click="cancelEditingTitle"
+                />
+            </template>
+            <template v-else>
+                <span class="conversation-title">{{ currentTitle }}</span>
+                <el-button
+                    :icon="EditPen"
+                    circle
+                    size="small"
+                    text
+                    @click="startEditingTitle"
+                />
+                <el-button
+                    :icon="Delete"
+                    circle
+                    size="small"
+                    text
+                    type="danger"
+                    :disabled="loading || conversationLoading"
+                    @click="deleteCurrentConversation"
+                />
+            </template>
         </div>
 
         <div v-if="conversationId" class="conversation-id">
@@ -294,6 +427,22 @@ onMounted(() => {
 
 .conversation-select {
     min-width: 180px;
+}
+
+.conversation-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -4px 0 12px;
+}
+
+.conversation-title {
+    color: #303133;
+    font-weight: 600;
+}
+
+.title-input {
+    max-width: 320px;
 }
 
 .message-history {

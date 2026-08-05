@@ -20,6 +20,30 @@ export function createChatConversation(title?: string): Promise<Conversation> {
         .then((resp) => resp.data.data)
 }
 
+/** PATCH /chat-agent/conversations/{conversationId}/title，手动修改会话标题。 */
+export function renameChatConversation(
+    conversationId: string,
+    title: string,
+): Promise<Conversation> {
+    return http
+        .patch<Result<Conversation>>(
+            `/chat-agent/conversations/${encodeURIComponent(conversationId)}/title`,
+            { title },
+        )
+        .then((resp) => resp.data.data)
+}
+
+/** DELETE /chat-agent/conversations/{conversationId}，软删除一个会话。 */
+export function deleteChatConversation(
+    conversationId: string,
+): Promise<Conversation> {
+    return http
+        .delete<Result<Conversation>>(
+            `/chat-agent/conversations/${encodeURIComponent(conversationId)}`,
+        )
+        .then((resp) => resp.data.data)
+}
+
 /** GET /chat-agent/conversations，查询当前用户可见的会话。 */
 export function listChatConversations(): Promise<Conversation[]> {
     return http
