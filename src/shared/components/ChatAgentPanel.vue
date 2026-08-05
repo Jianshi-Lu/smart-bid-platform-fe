@@ -1,31 +1,144 @@
 <script setup lang="ts">
 /**
- * chat-agent 最小单轮问答组件。
+ * chat-agent 阶段 0 会话问答组件。
  *
- * 只维护当前问题、请求状态和当前回答，不保存会话历史，也不处理流式输出。
+ * 当前维护会话 ID、会话列表、历史消息和请求状态；不直接连接 Python 服务。
  */
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound, Promotion } from '@element-plus/icons-vue'
-import { askChatAgent } from '@/api/chat-agent'
+import {
+    askChatAgent,
+    createChatConversation,
+    listChatConversationMessages,
+    listChatConversations,
+} from '@/api/chat-agent'
+import type { ChatMessage, Conversation } from '@/types/chat-agent'
 import { getErrorMessage } from '@/shared/utils/error'
 
 const question = ref('')
 const answer = ref('')
+const conversationId = ref<string | null>(null)
+const conversations = ref<Conversation[]>([])
+const messages = ref<ChatMessage[]>([])
+const pendingClientMessageId = ref<string | null>(null)
+const pendingQuestion = ref<string | null>(null)
 const loading = ref(false)
+const conversationLoading = ref(false)
 
-const canSubmit = computed(() => question.value.trim().length > 0 && !loading.value)
+const canSubmit = computed(() =>
+    question.value.trim().length > 0
+    && !loading.value
+    && !conversationLoading.value
+    && conversationId.value !== null,
+)
+
+function createClientMessageId(): string {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+        return crypto.randomUUID()
+    }
+    return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+async function startNewConversation() {
+    if (loading.value || conversationLoading.value) return
+
+    conversationLoading.value = true
+    try {
+        const conversation = await createChatConversation()
+        conversationId.value = conversation.conversationId
+        conversations.value = [conversation, ...conversations.value]
+        messages.value = []
+        question.value = ''
+        answer.value = ''
+        pendingClientMessageId.value = null
+        pendingQuestion.value = null
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error))
+    } finally {
+        conversationLoading.value = false
+    }
+}
+
+async function selectConversation(selectedConversationId: string) {
+    if (
+        loading.value
+        || conversationLoading.value
+        || selectedConversationId === conversationId.value
+    ) return
+
+    conversationLoading.value = true
+    try {
+        const history = await listChatConversationMessages(selectedConversationId)
+        conversationId.value = selectedConversationId
+        messages.value = history
+        answer.value = [...history]
+            .reverse()
+            .find((message) => message.role === 'ASSISTANT' && message.status === 'COMPLETED')
+            ?.content ?? ''
+        question.value = ''
+        pendingClientMessageId.value = null
+        pendingQuestion.value = null
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error))
+    } finally {
+        conversationLoading.value = false
+    }
+}
+
+async function initializeConversations() {
+    conversationLoading.value = true
+    try {
+        const existingConversations = await listChatConversations()
+        conversations.value = existingConversations
+        if (existingConversations.length > 0) {
+            const firstConversation = existingConversations[0]
+            const history = await listChatConversationMessages(
+                firstConversation.conversationId,
+            )
+            conversationId.value = firstConversation.conversationId
+            messages.value = history
+            answer.value = [...history]
+                .reverse()
+                .find((message) => message.role === 'ASSISTANT' && message.status === 'COMPLETED')
+                ?.content ?? ''
+        } else {
+            conversationLoading.value = false
+            await startNewConversation()
+        }
+    } catch (error) {
+        ElMessage.error(getErrorMessage(error))
+    } finally {
+        conversationLoading.value = false
+    }
+}
 
 async function submit() {
     const normalizedQuestion = question.value.trim()
-    if (!normalizedQuestion || loading.value) return
+    if (!normalizedQuestion || loading.value || !conversationId.value) return
 
     loading.value = true
     answer.value = ''
+    if (pendingClientMessageId.value === null
+        || pendingQuestion.value !== normalizedQuestion) {
+        pendingClientMessageId.value = createClientMessageId()
+        pendingQuestion.value = normalizedQuestion
+    }
 
     try {
-        const response = await askChatAgent(normalizedQuestion)
+        const response = await askChatAgent({
+            conversationId: conversationId.value,
+            clientMessageId: pendingClientMessageId.value,
+            question: normalizedQuestion,
+        })
         answer.value = response.answer
+        pendingClientMessageId.value = null
+        pendingQuestion.value = null
+        try {
+            messages.value = await listChatConversationMessages(conversationId.value)
+        } catch {
+            // 回答已经成功返回；历史回放失败不覆盖本次问答结果。
+        }
     } catch (error) {
         ElMessage.error(getErrorMessage(error))
     } finally {
@@ -39,6 +152,10 @@ function onQuestionKeydown(event: KeyboardEvent) {
         void submit()
     }
 }
+
+onMounted(() => {
+    void initializeConversations()
+})
 </script>
 
 <template>
@@ -48,7 +165,36 @@ function onQuestionKeydown(event: KeyboardEvent) {
                 <el-icon class="heading-icon"><ChatDotRound /></el-icon>
                 <h2>智能问答</h2>
             </div>
-            <p>基于当前 chat-agent 服务进行单轮问答</p>
+            <p>基于当前 chat-agent 服务进行会话问答</p>
+        </div>
+
+        <div class="conversation-actions">
+            <el-select
+                :model-value="conversationId"
+                class="conversation-select"
+                :disabled="loading || conversationLoading"
+                placeholder="选择会话"
+                @change="selectConversation"
+            >
+                <el-option
+                    v-for="conversation in conversations"
+                    :key="conversation.conversationId"
+                    :label="conversation.title"
+                    :value="conversation.conversationId"
+                />
+            </el-select>
+            <el-button
+                plain
+                :loading="conversationLoading"
+                :disabled="loading || conversationLoading"
+                @click="startNewConversation"
+            >
+                新建会话
+            </el-button>
+        </div>
+
+        <div v-if="conversationId" class="conversation-id">
+            当前会话：{{ conversationId }}
         </div>
 
         <el-input
@@ -67,7 +213,7 @@ function onQuestionKeydown(event: KeyboardEvent) {
             <el-button
                 type="primary"
                 :icon="Promotion"
-                :loading="loading"
+                :loading="loading || conversationLoading"
                 :disabled="!canSubmit"
                 @click="submit"
             >
@@ -75,7 +221,23 @@ function onQuestionKeydown(event: KeyboardEvent) {
             </el-button>
         </div>
 
-        <div v-if="answer" class="answer-section">
+        <div v-if="messages.length > 0" class="message-history">
+            <div
+                v-for="message in messages"
+                :key="message.messageId"
+                class="message-item"
+                :class="message.role === 'USER' ? 'user-message' : 'assistant-message'"
+            >
+                <div class="message-role">
+                    {{ message.role === 'USER' ? '我' : '助手' }}
+                </div>
+                <div class="message-content">
+                    {{ message.content || (message.status === 'PROCESSING' ? '处理中...' : '暂无内容') }}
+                </div>
+            </div>
+        </div>
+
+        <div v-if="answer && messages.length === 0" class="answer-section">
             <div class="answer-label">回答</div>
             <div class="answer-content">{{ answer }}</div>
         </div>
@@ -114,6 +276,62 @@ function onQuestionKeydown(event: KeyboardEvent) {
     margin: 6px 0 0 30px;
     color: #909399;
     font-size: 13px;
+}
+
+.conversation-id {
+    color: #606266;
+    font-family: monospace;
+    margin: -4px 0 12px;
+}
+
+.conversation-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin: -8px 0 12px;
+}
+
+.conversation-select {
+    min-width: 180px;
+}
+
+.message-history {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #ebeef5;
+}
+
+.message-item {
+    max-width: 90%;
+}
+
+.user-message {
+    align-self: flex-end;
+    text-align: right;
+}
+
+.assistant-message {
+    align-self: flex-start;
+}
+
+.message-role {
+    margin-bottom: 4px;
+    color: #909399;
+    font-size: 12px;
+}
+
+.message-content {
+    padding: 10px 12px;
+    color: #303133;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #f5f7fa;
+    border-radius: 6px;
 }
 
 .panel-actions {
