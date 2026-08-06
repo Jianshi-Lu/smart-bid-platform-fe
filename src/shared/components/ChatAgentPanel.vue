@@ -4,9 +4,16 @@
  *
  * 当前维护会话 ID、会话列表、历史消息和请求状态；不直接连接 Python 服务。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ChatDotRound, Check, Close, Delete, EditPen, Promotion } from '@element-plus/icons-vue'
+import {
+    Check,
+    Close,
+    Delete,
+    EditPen,
+    Plus,
+    Promotion,
+} from '@element-plus/icons-vue'
 import {
     askChatAgent,
     createChatConversation,
@@ -17,12 +24,16 @@ import {
 } from '@/api/chat-agent'
 import type { ChatMessage, Conversation } from '@/types/chat-agent'
 import { getErrorMessage } from '@/shared/utils/error'
+import { marked } from 'marked'
 
 const question = ref('')
 const answer = ref('')
+const typingAnswer = ref('')
+const typingTimer = ref<number | null>(null)
 const conversationId = ref<string | null>(null)
 const conversations = ref<Conversation[]>([])
 const messages = ref<ChatMessage[]>([])
+const messageHistoryRef = ref<HTMLElement | null>(null)
 const pendingClientMessageId = ref<string | null>(null)
 const pendingQuestion = ref<string | null>(null)
 const loading = ref(false)
@@ -39,6 +50,63 @@ const currentTitle = computed(() =>
 )
 const editingTitle = ref(false)
 const draftTitle = ref('')
+const sidebarWidth = ref(250)
+const composerHeight = ref(150)
+
+function isLocalMessage(messageId: string): boolean {
+    return messageId.startsWith('local-')
+}
+
+function clearTypingTimer(): void {
+    if (typingTimer.value !== null) {
+        window.clearInterval(typingTimer.value)
+        typingTimer.value = null
+    }
+}
+
+function localMessage(
+    role: 'USER' | 'ASSISTANT',
+    content: string | null,
+    clientMessageId: string,
+    status: string,
+): ChatMessage {
+    return {
+        messageId: `local-${clientMessageId}-${role.toLowerCase()}`,
+        conversationId: conversationId.value ?? '',
+        requestId: clientMessageId,
+        clientMessageId,
+        role,
+        content,
+        contentType: role === 'ASSISTANT' ? 'MARKDOWN' : 'TEXT',
+        sequenceNo: 0,
+        status,
+        errorCode: null,
+        errorMessage: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    }
+}
+
+function updateLocalMessage(
+    messageId: string,
+    patch: Partial<ChatMessage>,
+): void {
+    messages.value = messages.value.map((message) =>
+        message.messageId === messageId
+            ? { ...message, ...patch }
+            : message,
+    )
+}
+
+/** 消息更新后把对话区域滚动到底部，保证最新消息可见。 */
+function scrollMessageHistoryToBottom(): void {
+    void nextTick(() => {
+        const container = messageHistoryRef.value
+        if (container) {
+            container.scrollTop = container.scrollHeight
+        }
+    })
+}
 
 function createClientMessageId(): string {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -50,12 +118,14 @@ function createClientMessageId(): string {
 async function startNewConversation() {
     if (loading.value || conversationLoading.value) return
 
+    clearTypingTimer()
     conversationLoading.value = true
     try {
         const conversation = await createChatConversation()
         conversationId.value = conversation.conversationId
         conversations.value = [conversation, ...conversations.value]
         messages.value = []
+        void nextTick(scrollMessageHistoryToBottom)
         question.value = ''
         answer.value = ''
         pendingClientMessageId.value = null
@@ -98,15 +168,14 @@ async function saveTitle() {
     }
 }
 
-async function deleteCurrentConversation() {
-    if (!conversationId.value || loading.value || conversationLoading.value) return
+async function deleteConversationById(conversationIdToDelete: string) {
+    if (loading.value || conversationLoading.value) return
 
     try {
         await ElMessageBox.confirm(
-            '删除后会话将从列表移除，历史消息保留在服务端。确定删除吗？',
+            '确定删除该会话吗？',
             '删除会话',
             {
-                type: 'warning',
                 confirmButtonText: '删除',
                 cancelButtonText: '取消',
             },
@@ -115,12 +184,14 @@ async function deleteCurrentConversation() {
         return
     }
 
-    const deletedId = conversationId.value
     try {
-        await deleteChatConversation(deletedId)
+        clearTypingTimer()
+        await deleteChatConversation(conversationIdToDelete)
         conversations.value = conversations.value.filter(
-            (c) => c.conversationId !== deletedId,
+            (c) => c.conversationId !== conversationIdToDelete,
         )
+        if (conversationId.value !== conversationIdToDelete) return
+
         messages.value = []
         answer.value = ''
         question.value = ''
@@ -145,11 +216,13 @@ async function selectConversation(selectedConversationId: string) {
         || selectedConversationId === conversationId.value
     ) return
 
+    clearTypingTimer()
     conversationLoading.value = true
     try {
         const history = await listChatConversationMessages(selectedConversationId)
         conversationId.value = selectedConversationId
         messages.value = history
+        scrollMessageHistoryToBottom()
         answer.value = [...history]
             .reverse()
             .find((message) => message.role === 'ASSISTANT' && message.status === 'COMPLETED')
@@ -176,6 +249,7 @@ async function initializeConversations() {
             )
             conversationId.value = firstConversation.conversationId
             messages.value = history
+            scrollMessageHistoryToBottom()
             answer.value = [...history]
                 .reverse()
                 .find((message) => message.role === 'ASSISTANT' && message.status === 'COMPLETED')
@@ -191,28 +265,83 @@ async function initializeConversations() {
     }
 }
 
+/**
+ * 打字机效果：把完整回答按字符增量写入本地助手消息，并同步滚动到底部。
+ * 完成时 resolve，调用方再回放服务端历史。
+ */
+function typeAnswer(
+    text: string,
+    assistantMessageId: string,
+): Promise<void> {
+    return new Promise((resolve) => {
+        clearTypingTimer()
+        typingAnswer.value = ''
+        let index = 0
+        const step = 3
+        const intervalMs = 20
+        typingTimer.value = window.setInterval(() => {
+            index = Math.min(text.length, index + step)
+            typingAnswer.value = text.slice(0, index)
+            updateLocalMessage(assistantMessageId, {
+                content: typingAnswer.value,
+                status: index >= text.length ? 'COMPLETED' : 'PROCESSING',
+            })
+            scrollMessageHistoryToBottom()
+            if (index >= text.length) {
+                clearTypingTimer()
+                resolve()
+            }
+        }, intervalMs)
+    })
+}
+
 async function submit() {
     const normalizedQuestion = question.value.trim()
     if (!normalizedQuestion || loading.value || !conversationId.value) return
 
+    // 问题已提交，立即清空输入框，避免用户重复发送。
+    question.value = ''
     loading.value = true
     answer.value = ''
+    clearTypingTimer()
     if (pendingClientMessageId.value === null
         || pendingQuestion.value !== normalizedQuestion) {
         pendingClientMessageId.value = createClientMessageId()
         pendingQuestion.value = normalizedQuestion
     }
 
+    const activeConversationId = conversationId.value
+    const activeClientMessageId = pendingClientMessageId.value
+    // 本地乐观追加：用户消息 + 打字机助手消息，避免回答区域整段跳变。
+    const localUser = localMessage(
+        'USER',
+        normalizedQuestion,
+        activeClientMessageId,
+        'COMPLETED',
+    )
+    const localAssistant = localMessage(
+        'ASSISTANT',
+        '',
+        activeClientMessageId,
+        'PROCESSING',
+    )
+    messages.value = [
+        ...messages.value,
+        localUser,
+        localAssistant,
+    ]
+    scrollMessageHistoryToBottom()
+
     try {
         const response = await askChatAgent({
-            conversationId: conversationId.value,
-            clientMessageId: pendingClientMessageId.value,
+            conversationId: activeConversationId,
+            clientMessageId: activeClientMessageId,
             question: normalizedQuestion,
         })
         answer.value = response.answer
-        if (response.title && conversationId.value) {
+        if (response.title && activeConversationId) {
             const index = conversations.value.findIndex(
-                (c) => c.conversationId === conversationId.value,
+                (c) => c.conversationId === activeConversationId,
             )
             if (index !== -1) {
                 conversations.value[index] = {
@@ -221,18 +350,72 @@ async function submit() {
                 }
             }
         }
+        await typeAnswer(response.answer, localAssistant.messageId)
         pendingClientMessageId.value = null
         pendingQuestion.value = null
         try {
-            messages.value = await listChatConversationMessages(conversationId.value)
+            messages.value = await listChatConversationMessages(
+                activeConversationId,
+            )
+            scrollMessageHistoryToBottom()
         } catch {
             // 回答已经成功返回；历史回放失败不覆盖本次问答结果。
         }
     } catch (error) {
+        updateLocalMessage(localAssistant.messageId, {
+            content: null,
+            status: 'FAILED',
+            errorMessage: getErrorMessage(error, '知识问答失败'),
+        })
         ElMessage.error(getErrorMessage(error))
     } finally {
         loading.value = false
+        clearTypingTimer()
+        scrollMessageHistoryToBottom()
     }
+}
+
+function startSidebarResize(event: MouseEvent) {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = sidebarWidth.value
+    const onMove = (moveEvent: MouseEvent) => {
+        sidebarWidth.value = Math.min(360, Math.max(180, startWidth + moveEvent.clientX - startX))
+    }
+    const onUp = () => {
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        document.body.style.userSelect = ''
+        document.body.style.cursor = ''
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'col-resize'
+}
+
+function startComposerResize(event: MouseEvent) {
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = composerHeight.value
+    const onMove = (moveEvent: MouseEvent) => {
+        composerHeight.value = Math.min(320, Math.max(140, startHeight + startY - moveEvent.clientY))
+    }
+    const onUp = () => {
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        document.body.style.userSelect = ''
+        document.body.style.cursor = ''
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'row-resize'
+}
+
+function renderMarkdown(content: string | null): string {
+    if (!content) return ''
+    return marked.parse(content, { async: false }) as string
 }
 
 function onQuestionKeydown(event: KeyboardEvent) {
@@ -245,116 +428,100 @@ function onQuestionKeydown(event: KeyboardEvent) {
 onMounted(() => {
     void initializeConversations()
 })
+
+onUnmounted(() => {
+    clearTypingTimer()
+})
 </script>
 
 <template>
     <el-card class="chat-agent-panel" shadow="never">
-        <div class="panel-heading">
-            <div class="heading-title">
-                <el-icon class="heading-icon"><ChatDotRound /></el-icon>
-                <h2>智能问答</h2>
-            </div>
-            <p>基于当前 chat-agent 服务进行会话问答</p>
-        </div>
+        <div class="chat-layout">
+            <aside class="conversation-sidebar" :style="{ width: sidebarWidth + 'px' }">
+                <div class="sidebar-header">
+                    <span class="sidebar-title">会话</span>
+                    <el-button
+                        type="primary"
+                        :icon="Plus"
+                        size="small"
+                        :loading="conversationLoading"
+                        :disabled="loading || conversationLoading"
+                        @click="startNewConversation"
+                    >
+                        新建
+                    </el-button>
+                </div>
+                <div class="conversation-list">
+                    <div
+                        v-for="conversation in conversations"
+                        :key="conversation.conversationId"
+                        class="conversation-item"
+                        :class="{ 'is-active': conversation.conversationId === conversationId }"
+                        @click="selectConversation(conversation.conversationId)"
+                    >
+                        <span class="conversation-item-title">{{ conversation.title }}</span>
+                        <el-button
+                            class="conversation-item-delete"
+                            :icon="Delete"
+                            size="small"
+                            text
+                            @click.stop="deleteConversationById(conversation.conversationId)"
+                        />
+                    </div>
+                    <div v-if="!conversations.length" class="conversation-empty">
+                        暂无会话
+                    </div>
+                </div>
+            </aside>
 
-        <div class="conversation-actions">
-            <el-select
-                :model-value="conversationId"
-                class="conversation-select"
-                :disabled="loading || conversationLoading"
-                placeholder="选择会话"
-                @change="selectConversation"
-            >
-                <el-option
-                    v-for="conversation in conversations"
-                    :key="conversation.conversationId"
-                    :label="conversation.title"
-                    :value="conversation.conversationId"
-                />
-            </el-select>
-            <el-button
-                plain
-                :loading="conversationLoading"
-                :disabled="loading || conversationLoading"
-                @click="startNewConversation"
-            >
-                新建会话
-            </el-button>
-        </div>
+            <div class="sidebar-resizer" @mousedown.prevent="startSidebarResize" />
 
-        <div v-if="conversationId" class="conversation-title-row">
-            <template v-if="editingTitle">
-                <el-input
-                    v-model="draftTitle"
-                    class="title-input"
-                    maxlength="200"
-                    placeholder="输入新标题"
-                    @keyup.enter="saveTitle"
-                />
-                <el-button
-                    type="primary"
-                    :icon="Check"
-                    circle
-                    size="small"
-                    @click="saveTitle"
-                />
-                <el-button
-                    :icon="Close"
-                    circle
-                    size="small"
-                    @click="cancelEditingTitle"
-                />
-            </template>
-            <template v-else>
-                <span class="conversation-title">{{ currentTitle }}</span>
-                <el-button
-                    :icon="EditPen"
-                    circle
-                    size="small"
-                    text
-                    @click="startEditingTitle"
-                />
-                <el-button
-                    :icon="Delete"
-                    circle
-                    size="small"
-                    text
-                    type="danger"
-                    :disabled="loading || conversationLoading"
-                    @click="deleteCurrentConversation"
-                />
-            </template>
-        </div>
+            <div class="chat-main">
+                <div class="chat-header">
+                    <div class="chat-header-title">
+                        <template v-if="editingTitle">
+                            <el-input
+                                v-model="draftTitle"
+                                class="title-input"
+                                maxlength="200"
+                                placeholder="输入新标题"
+                                @keyup.enter="saveTitle"
+                            />
+                            <el-button
+                                type="primary"
+                                :icon="Check"
+                                size="small"
+                                class="title-action"
+                                @click="saveTitle"
+                            />
+                            <el-button
+                                :icon="Close"
+                                size="small"
+                                class="title-action"
+                                @click="cancelEditingTitle"
+                            />
+                        </template>
+                        <template v-else>
+                            <span class="chat-header-name">{{ currentTitle }}</span>
+                            <el-button
+                                :icon="EditPen"
+                                size="small"
+                                text
+                                class="title-action"
+                                @click="startEditingTitle"
+                            />
+                        </template>
+                    </div>
+                    <p class="chat-header-subtitle">
+                        有任何政策相关问题都可以问我，AI 会结合知识库回答，并记住当前对话。
+                    </p>
+                </div>
 
-        <div v-if="conversationId" class="conversation-id">
-            当前会话：{{ conversationId }}
-        </div>
-
-        <el-input
-            v-model="question"
-            type="textarea"
-            :rows="4"
-            maxlength="2000"
-            show-word-limit
-            resize="vertical"
-            placeholder="请输入要咨询的问题"
-            @keydown="onQuestionKeydown"
-        />
-
-        <div class="panel-actions">
-            <span class="shortcut-tip">支持 Ctrl/⌘ + Enter 提交</span>
-            <el-button
-                type="primary"
-                :icon="Promotion"
-                :loading="loading || conversationLoading"
-                :disabled="!canSubmit"
-                @click="submit"
-            >
-                {{ loading ? '回答中...' : '提交问题' }}
-            </el-button>
-        </div>
-
-        <div v-if="messages.length > 0" class="message-history">
+        <div
+            v-if="messages.length > 0"
+            ref="messageHistoryRef"
+            class="message-history"
+        >
             <div
                 v-for="message in messages"
                 :key="message.messageId"
@@ -364,15 +531,64 @@ onMounted(() => {
                 <div class="message-role">
                     {{ message.role === 'USER' ? '我' : '助手' }}
                 </div>
-                <div class="message-content">
+                <div
+                    v-if="message.role === 'USER'"
+                    class="message-content"
+                >
                     {{ message.content || (message.status === 'PROCESSING' ? '处理中...' : '暂无内容') }}
+                </div>
+                <div v-else class="message-content">
+                    <template v-if="isLocalMessage(message.messageId)">
+                        <span class="typing-content">
+                            {{ message.content || '正在输入...' }}
+                        </span>
+                        <span
+                            v-if="message.status === 'PROCESSING'"
+                            class="typing-caret"
+                        >▍</span>
+                    </template>
+                    <div
+                        v-else
+                        class="markdown-body"
+                        v-html="renderMarkdown(message.content || (message.status === 'PROCESSING' ? '处理中...' : '暂无内容'))"
+                    />
                 </div>
             </div>
         </div>
 
         <div v-if="answer && messages.length === 0" class="answer-section">
             <div class="answer-label">回答</div>
-            <div class="answer-content">{{ answer }}</div>
+            <div class="answer-content markdown-body" v-html="renderMarkdown(answer)" />
+        </div>
+
+        <div class="composer-resizer" @mousedown.prevent="startComposerResize" />
+
+        <div class="composer" :style="{ height: composerHeight + 'px' }">
+            <el-input
+                v-model="question"
+                type="textarea"
+                :rows="4"
+                maxlength="2000"
+                show-word-limit
+                resize="vertical"
+                placeholder="请输入要咨询的问题"
+                @keydown="onQuestionKeydown"
+            />
+
+            <div class="panel-actions">
+                <span class="shortcut-tip">支持 Ctrl/⌘ + Enter 提交</span>
+                <el-button
+                    type="primary"
+                    :icon="Promotion"
+                    :loading="loading || conversationLoading"
+                    :disabled="!canSubmit"
+                    @click="submit"
+                >
+                    {{ loading ? '回答中...' : '提交问题' }}
+                </el-button>
+            </div>
+        </div>
+            </div>
         </div>
     </el-card>
 </template>
@@ -380,82 +596,185 @@ onMounted(() => {
 <style scoped>
 .chat-agent-panel {
     max-width: 1200px;
-    margin: 24px auto 0;
-    border-radius: 8px;
+    margin: 20px auto 0;
+    height: min(680px, calc(100vh - 140px));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--lc-border);
+    border-radius: var(--lc-radius-lg);
+    background: var(--lc-surface);
+    box-shadow: var(--lc-shadow-sm);
 }
 
-.panel-heading {
-    margin-bottom: 16px;
+.chat-agent-panel :deep(.el-card__body) {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
-.heading-title {
+.chat-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.conversation-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 250px;
+    flex-shrink: 0;
+    padding: 16px 12px;
+    background: var(--lc-surface-muted);
+    border-right: 1px solid var(--lc-border);
+}
+
+.sidebar-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 0 4px;
 }
 
-.heading-title h2 {
-    margin: 0;
-    color: #303133;
-    font-size: 20px;
-}
-
-.heading-icon {
-    color: var(--el-color-primary);
-    font-size: 22px;
-}
-
-.panel-heading p {
-    margin: 6px 0 0 30px;
-    color: #909399;
+.sidebar-title {
+    color: var(--lc-text-secondary);
     font-size: 13px;
-}
-
-.conversation-id {
-    color: #606266;
-    font-family: monospace;
-    margin: -4px 0 12px;
-}
-
-.conversation-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    margin: -8px 0 12px;
-}
-
-.conversation-select {
-    min-width: 180px;
-}
-
-.conversation-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: -4px 0 12px;
-}
-
-.conversation-title {
-    color: #303133;
     font-weight: 600;
+}
+
+.conversation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.conversation-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--lc-text);
+    font-size: 13px;
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.conversation-item:hover {
+    background: var(--lc-accent-soft);
+}
+
+.conversation-item.is-active {
+    background: var(--lc-accent);
+    color: #ffffff;
+}
+
+.conversation-item-title {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation-item-delete {
+    visibility: hidden;
+    flex-shrink: 0;
+}
+
+.conversation-item:hover .conversation-item-delete,
+.conversation-item.is-active .conversation-item-delete {
+    visibility: visible;
+}
+
+.conversation-item.is-active .conversation-item-delete {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.conversation-empty {
+    padding: 16px 8px;
+    color: var(--lc-text-muted);
+    font-size: 12px;
+    text-align: center;
+}
+
+.chat-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.chat-header {
+    padding: 16px 24px 12px;
+    border-bottom: 1px solid var(--lc-border);
+    flex-shrink: 0;
+}
+
+.chat-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-header-name {
+    margin: 0;
+    color: var(--lc-text);
+    font-size: 17px;
+    font-weight: 650;
+}
+
+.chat-header-subtitle {
+    margin: 6px 0 0;
+    color: var(--lc-text-secondary);
+    font-size: 12px;
 }
 
 .title-input {
     max-width: 320px;
 }
 
+.title-action {
+    margin-left: 2px;
+}
+
 .message-history {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid #ebeef5;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    padding: 16px 24px;
+    overflow-y: auto;
 }
 
 .message-item {
-    max-width: 90%;
+    max-width: 82%;
+    animation: lc-message-in 0.25s ease both;
+}
+
+.message-role {
+    margin-bottom: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.75;
+}
+
+.message-content {
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .user-message {
@@ -463,24 +782,82 @@ onMounted(() => {
     text-align: right;
 }
 
+.user-message .message-content {
+    padding: 10px 14px;
+    border-radius: 14px 14px 4px 14px;
+    background: var(--lc-accent);
+    color: #ffffff;
+}
+
+.user-message .message-role {
+    color: var(--lc-accent-strong);
+}
+
 .assistant-message {
     align-self: flex-start;
 }
 
-.message-role {
-    margin-bottom: 4px;
-    color: #909399;
-    font-size: 12px;
+.assistant-message .message-content {
+    padding: 10px 14px;
+    border-radius: 14px 14px 14px 4px;
+    background: var(--lc-surface-muted);
+    border: 1px solid var(--lc-border);
+    color: var(--lc-text);
 }
 
-.message-content {
-    padding: 10px 12px;
-    color: #303133;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-break: break-word;
-    background: #f5f7fa;
-    border-radius: 6px;
+.assistant-message .message-role {
+    color: var(--lc-text-secondary);
+}
+
+.sidebar-resizer {
+    width: 5px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background: transparent;
+    transition: background-color 0.15s ease;
+}
+
+.sidebar-resizer:hover {
+    background: var(--lc-accent-soft);
+}
+
+.composer-resizer {
+    height: 6px;
+    flex-shrink: 0;
+    cursor: row-resize;
+    background: transparent;
+    transition: background-color 0.15s ease;
+}
+
+.composer-resizer:hover {
+    background: var(--lc-accent-soft);
+}
+
+.composer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 12px 24px 16px;
+    border-top: 1px solid var(--lc-border);
+    flex-shrink: 0;
+}
+
+.composer :deep(.el-textarea) {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.composer :deep(.el-textarea__inner) {
+    flex: 1;
+    height: 100%;
+    max-height: none;
+    resize: none;
+}
+
+.composer :deep(.el-textarea__inner) {
+    color: var(--lc-text);
 }
 
 .panel-actions {
@@ -488,45 +865,213 @@ onMounted(() => {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-top: 12px;
+    margin-top: 14px;
+    flex-shrink: 0;
 }
 
 .shortcut-tip {
-    color: #909399;
+    color: var(--lc-text-muted);
     font-size: 12px;
 }
 
 .answer-section {
     margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid #ebeef5;
+    padding-top: 18px;
+    border-top: 1px solid var(--lc-border);
 }
 
 .answer-label {
     margin-bottom: 8px;
-    color: #606266;
-    font-size: 14px;
+    color: var(--lc-text-secondary);
+    font-size: 13px;
     font-weight: 600;
 }
 
 .answer-content {
-    padding: 12px;
-    color: #303133;
+    padding: 12px 14px;
+    font-size: 14px;
+    border-radius: var(--lc-radius-md);
+    background: var(--lc-surface-muted);
+    border: 1px solid var(--lc-border);
+    color: var(--lc-text);
     line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-word;
-    background: #f5f7fa;
-    border-radius: 4px;
+}
+
+.markdown-body {
+    font-size: 14px;
+    line-height: 1.55;
+    word-break: break-word;
+}
+
+.markdown-body > :first-child {
+    margin-top: 0;
+}
+
+.markdown-body > :last-child {
+    margin-bottom: 0;
+}
+
+.typing-content {
+    white-space: pre-wrap;
+}
+
+.typing-caret {
+    display: inline-block;
+    margin-left: 1px;
+    color: inherit;
+    animation: lc-caret-blink 0.9s steps(2, start) infinite;
+}
+
+@keyframes lc-caret-blink {
+    0%,
+    49% {
+        opacity: 1;
+    }
+    50%,
+    100% {
+        opacity: 0;
+    }
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+    margin: 12px 0 6px;
+    font-weight: 650;
+    line-height: 1.3;
+}
+
+.markdown-body h1 { font-size: 16px; }
+.markdown-body h2 { font-size: 15px; }
+.markdown-body h3 { font-size: 14px; }
+.markdown-body h4 { font-size: 14px; }
+
+.markdown-body p {
+    margin: 5px 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    margin: 5px 0;
+    padding-left: 22px;
+}
+
+.markdown-body li + li {
+    margin-top: 3px;
+}
+
+.markdown-body code {
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.06);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+}
+
+.markdown-body pre {
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--lc-surface-muted);
+    border: 1px solid var(--lc-border);
+    overflow-x: auto;
+}
+
+.markdown-body pre code {
+    padding: 0;
+    background: transparent;
+}
+
+.markdown-body blockquote {
+    margin: 8px 0;
+    padding: 2px 12px;
+    border-left: 3px solid var(--lc-accent);
+    color: var(--lc-text-secondary);
+}
+
+.markdown-body table {
+    margin: 8px 0;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12.5px;
+}
+
+.markdown-body th,
+.markdown-body td {
+    padding: 6px 10px;
+    border: 1px solid var(--lc-border);
+    text-align: left;
+}
+
+.markdown-body th {
+    background: var(--lc-surface-muted);
+    font-weight: 600;
+}
+
+.markdown-body a {
+    color: var(--lc-accent);
+    text-decoration: none;
+}
+
+.markdown-body img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.markdown-body hr {
+    margin: 12px 0;
+    border: none;
+    border-top: 1px solid var(--lc-border);
 }
 
 @media (max-width: 600px) {
     .panel-actions {
-        align-items: flex-end;
         flex-direction: column;
+        align-items: stretch;
     }
 
     .shortcut-tip {
         align-self: flex-start;
+    }
+
+    .message-item {
+        max-width: 92%;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar-resizer {
+        display: none;
+    }
+
+    .chat-layout {
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .conversation-sidebar {
+        width: 100%;
+        max-height: 220px;
+        padding: 12px;
+        border-right: none;
+        border-bottom: 1px solid var(--lc-border);
+    }
+
+    .conversation-list {
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .conversation-item {
+        flex-shrink: 0;
+    }
+
+    .chat-main {
+        min-height: 480px;
     }
 }
 </style>
