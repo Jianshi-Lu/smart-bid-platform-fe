@@ -27,7 +27,7 @@
  *   listRiskAnalyses  ↔ GET /risk-analysis
  *
  * 调用方(view):
- *   - purchaser/RiskAnalysis/List.vue → listRiskAnalyses
+ *   - bid-inviter/RiskAnalysis/List.vue → listRiskAnalyses
  *
  * 注意: 写入由 BidRecordController.analyzeRisk 副作用落库完成,
  *       本模块不暴露 POST/PATCH/DELETE,前端模块边界与 BE 严格对齐。

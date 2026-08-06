@@ -1,57 +1,24 @@
 /**
- * 资信材料文件 API。
+ * 资信材料文件 API（投标方登录链路）。
  *
- * 上传接口使用 multipart/form-data。首次上传不携带 uploadBatchId,
- * 后续追加上传复用首次响应返回的批次号。前端不读取或拼接本地路径。
- *
- * 调用方(view/component):
- *   - shared/components/CredentialFileUpload.vue
+ * 上传/删除都走 /bidder/bid-records 下带账号归属校验的接口；
+ * 不再使用旧版 uploadBatchId 追加上传语义。
  */
 import { http } from '@/api/http'
 
-import type { Result } from '@/types/common'
-import type { CredentialFileUploadResponse } from '@/types/credential-file'
-
 /**
- * POST /credential-files/upload 上传一个或多个资信材料文件。
- *
- * FormData 字段:
- *  - files: 一个或多个 File
- *  - bidRecordId: 文件所属的投标记录 ID
- *  - uploadBatchId: 追加上传时携带，首次上传省略
- *
- * 不手动设置 Content-Type,由浏览器为 multipart boundary 自动生成。
- */
-export function uploadCredentialFiles(
-    files: File[],
-    bidRecordId: number,
-    uploadBatchId?: string
-): Promise<CredentialFileUploadResponse> {
-    const formData = new FormData()
-
-    files.forEach((file) => formData.append('files', file))
-    formData.append('bidRecordId', String(bidRecordId))
-
-    if (uploadBatchId) formData.append('uploadBatchId', uploadBatchId)
-
-    return http
-        .post<Result<CredentialFileUploadResponse>>(
-            '/credential-files/upload',
-            formData
-        )
-        .then((resp) => resp.data.data)
-}
-
-/**
- * DELETE /credential-files/{uploadBatchId}/files/{fileId} 删除已上传文件。
+ * DELETE /bidder/bid-records/{bidRecordId}/credential-files/{fileId}
+ * 删除已上传资信文件（连同存储对象）。
  *
  * 只有请求成功后,调用方才能从本地已上传列表移除文件。
  */
 export function deleteCredentialFile(
-    uploadBatchId: string,
+    bidRecordId: number,
     fileId: number
 ): Promise<void> {
     return http
-        .delete(`/credential-files/${uploadBatchId}/files/${fileId}`)
+        .delete(
+            `/bidder/bid-records/${bidRecordId}/credential-files/${fileId}`
+        )
         .then(() => undefined)
 }

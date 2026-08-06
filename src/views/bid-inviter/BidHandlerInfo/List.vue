@@ -5,10 +5,11 @@
  * usePagedList 统一维护分页、加载和错误状态，当前页按 bid_handler_id 倒序；
  * 前端固定 pageSize=10，覆盖后端默认值 3。页面只负责五列业务字段的展示。
  */
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listBidHandlers } from '@/api/bid-handler-info'
 import PageHeader from '@/shared/components/PageHeader.vue'
+import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
 import { getErrorMessage } from '@/shared/utils/error'
 import type { BidHandlerInfo } from '@/types/bid-handler-info'
@@ -19,6 +20,25 @@ const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidHa
   onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
+// ——— 行详情弹窗 ———
+const detailVisible = ref(false)
+const detailRow = ref<BidHandlerInfo | null>(null)
+
+function openDetail(row: BidHandlerInfo) {
+  detailRow.value = row
+  detailVisible.value = true
+}
+
+function detailFields(row: BidHandlerInfo): DetailField[] {
+  return [
+    { label: '经办人 ID', value: row.bidHandlerId },
+    { label: '经办人姓名', value: row.handlerName },
+    { label: '所属公司', value: row.companyName },
+    { label: '所属部门', value: row.departmentName },
+    { label: '通知邮箱', value: row.targetEmail },
+  ]
+}
+
 onMounted(() => {
   void load()
 })
@@ -26,13 +46,15 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <PageHeader title="招标经办人列表" back-to="/purchaser" back-label="返回招标方入口" />
+    <PageHeader title="招标经办人列表" back-to="/bid-inviter" back-label="返回招标方入口" />
 
     <el-table
         v-loading="loading"
         :data="rows"
         border
         stripe
+        class="clickable-table"
+        @row-click="openDetail"
         style="width: 100%"
     >
       <template #empty>
@@ -62,5 +84,12 @@ onMounted(() => {
           @current-change="load"
       />
     </div>
+
+    <!-- 行详情弹窗 -->
+    <DetailDialog
+        v-model="detailVisible"
+        :title="`经办人详情 #${detailRow?.bidHandlerId ?? ''}`"
+        :fields="detailRow ? detailFields(detailRow) : []"
+    />
   </div>
 </template>

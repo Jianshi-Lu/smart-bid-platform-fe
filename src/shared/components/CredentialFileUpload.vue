@@ -2,16 +2,21 @@
 /**
  * 资信材料文件上传组件。
  *
- * 组件只管理浏览器 File 对象、上传批次号和后端返回的文件信息。
+ * 组件只管理浏览器 File 对象和后端返回的文件信息。
  * 不读取或拼接本地物理路径,不负责 Markdown 转换,也不参与投标提交。
  *
  * 当前后端联调占位接口不会返回 fileId,因此这类响应仍可展示,
  * 但删除操作会被禁用,避免前端伪造文件 ID。
+ *
+ * 组件只面向投标方登录链路：上传/删除都走
+ * /bidder/bid-records/{id}/credential-files（后端强制账号归属校验），
+ * 每个文件独立成文件单元，不再维护批次号。
  */
 import { computed, readonly, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, FolderOpened, Upload } from '@element-plus/icons-vue'
-import { deleteCredentialFile, uploadCredentialFiles } from '@/api/credential-file'
+import { deleteCredentialFile } from '@/api/credential-file'
+import { uploadBidderCredentialFiles } from '@/api/bidder-bid-record'
 import { getErrorMessage } from '@/shared/utils/error'
 import type { CredentialFile } from '@/types/credential-file'
 
@@ -40,16 +45,18 @@ const props = withDefaults(defineProps<{
     disabled?: boolean
     /** 可选的浏览器文件类型过滤,不传表示不限制。 */
     accept?: string
+    /** 投标方登录模式：使用登录鉴权上传/删除接口，不维护批次号。 */
+    bidderMode?: boolean
 }>(), {
     disabled: false,
     accept: '',
+    bidderMode: false,
 })
 
 // 定义Vue的 Ref 容器,响应式状态，用来驱动页面更新。
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<PendingFile[]>([])
 const uploadedFiles = ref<UploadedFile[]>([])
-const uploadBatchId = ref('')
 const uploading = ref(false)
 const errorMessage = ref('')
 
@@ -139,17 +146,10 @@ async function uploadFiles() {
 
     // 调用上传接口
     try {
-        const response = await uploadCredentialFiles(
+        const response = await uploadBidderCredentialFiles(
             filesToUpload.map((item) => item.file),
-            bidRecordId,
-            uploadBatchId.value || undefined
+            bidRecordId
         )
-        if (!response.uploadBatchId) {
-            throw new Error('上传响应缺少 uploadBatchId')
-        }
-
-        // 第一次上传后端返回上传批次id
-        uploadBatchId.value = response.uploadBatchId
         const returnedFiles = response.files ?? []
         // 计算确认上传成功的数量：取“后端返回数量”和“本次请求数量”中的较小值，差值为上传失败文件数
         const uploadedCount = Math.min(returnedFiles.length, filesToUpload.length)
@@ -204,8 +204,18 @@ function getFileId(file: CredentialFile): number | null {
 async function removeUploadedFile(item: UploadedFile) {
     if (interactionDisabled.value || uploading.value || item.deleting) return
 
+    const bidRecordId = props.bidRecordId
+    if (
+        typeof bidRecordId !== 'number'
+        || !Number.isInteger(bidRecordId)
+        || bidRecordId <= 0
+    ) {
+        ElMessage.warning('投标记录 ID 无效，无法删除资信文件')
+        return
+    }
+
     const fileId = getFileId(item.file)
-    if (!uploadBatchId.value || fileId === null) {
+    if (fileId === null) {
         const message = '当前后端未返回 fileId,暂时无法删除该文件'
         item.errorMessage = message
         errorMessage.value = message
@@ -231,7 +241,7 @@ async function removeUploadedFile(item: UploadedFile) {
     item.status = 'REMOVED'
     errorMessage.value = ''
     try {
-        await deleteCredentialFile(uploadBatchId.value, fileId)
+        await deleteCredentialFile(bidRecordId, fileId)
         uploadedFiles.value = uploadedFiles.value.filter(
             (uploaded) => uploaded.key !== item.key
         )
@@ -268,7 +278,6 @@ function validateBeforeSubmit(): boolean {
 // 子组件主动决定哪些变量和方法允许父组件通过组件 ref 访问
 // // 暴露 Ref 而非其 .value，可保留与子组件内部响应式状态的实时关联（.value实时更新）
 defineExpose({
-    uploadBatchId: readonly(uploadBatchId),
     uploadedFiles: readonly(uploadedFiles),
     hasPendingOrUploadingFiles: readonly(hasPendingOrUploadingFiles),
     uploading: readonly(uploading),
@@ -312,7 +321,6 @@ defineExpose({
     <!--    │   ├── el-icon-->
     <!--    │   │   └── Upload-->
     <!--    │   └── “上传中/上传文件”        动态文本-->
-    <!--    └── span.batch-id               原生 DOM，条件显示批次号-->
     <div class="upload-toolbar">
       <el-button :disabled="interactionDisabled || uploading" @click="openFilePicker">
         <el-icon><FolderOpened /></el-icon>
@@ -328,7 +336,6 @@ defineExpose({
         <el-icon><Upload /></el-icon>
         {{ uploading ? '上传中...' : '上传文件' }}
       </el-button>
-      <span v-if="uploadBatchId" class="batch-id">批次号：{{ uploadBatchId }}</span>
     </div>
 
     <el-alert
@@ -406,7 +413,7 @@ defineExpose({
 }
 
 .credential-upload.is-disabled {
-  color: #909399;
+  color: var(--lc-text-muted);
 }
 
 .record-context {
@@ -418,7 +425,7 @@ defineExpose({
 }
 
 .record-label {
-  color: #606266;
+  color: var(--lc-text-secondary);
   font-size: 14px;
 }
 
@@ -446,7 +453,7 @@ defineExpose({
 
 .batch-id {
   flex: 1 1 100%;
-  color: #909399;
+  color: var(--lc-text-muted);
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -459,17 +466,17 @@ defineExpose({
 .file-section {
   margin-top: 16px;
   overflow: hidden;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
+  border: 1px solid var(--lc-border);
+  border-radius: var(--lc-radius-md);
 }
 
 .section-title {
   padding: 10px 12px;
-  color: #606266;
+  color: var(--lc-text-secondary);
   font-size: 13px;
   font-weight: 600;
-  background: #f5f7fa;
-  border-bottom: 1px solid #ebeef5;
+  background: var(--lc-surface-muted);
+  border-bottom: 1px solid var(--lc-border);
 }
 
 .file-row {
@@ -479,7 +486,7 @@ defineExpose({
   gap: 12px;
   min-height: 48px;
   padding: 6px 12px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--lc-border);
 }
 
 .file-row:last-child {
@@ -496,14 +503,14 @@ defineExpose({
 .file-name {
   min-width: 0;
   overflow: hidden;
-  color: #303133;
+  color: var(--lc-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .file-size {
   flex: none;
-  color: #909399;
+  color: var(--lc-text-muted);
   font-size: 12px;
 }
 

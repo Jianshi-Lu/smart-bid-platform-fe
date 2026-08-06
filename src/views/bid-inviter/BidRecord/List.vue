@@ -10,11 +10,13 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listBidRecords, analyzeRisk } from '@/api/bid-record'
 import PageHeader from '@/shared/components/PageHeader.vue'
+import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
 import { getErrorMessage } from '@/shared/utils/error'
 import type { BidRecord } from '@/types/bid-record'
 import type { RiskAnalysis } from '@/types/risk-analysis'
-import { RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
+import { RISK_LEVEL_TAG_CLASS, RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
+import { RISK_LEVEL_LABEL } from '@/shared/utils/dict'
 import { formatPrice, formatTime } from '@/shared/utils/format'
 
 const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidRecord>({
@@ -27,6 +29,28 @@ const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidRe
 const analyzingId = ref<number | null>(null)        // 当前正在分析的 bidRecordId,null 表示无
 const riskDialogVisible = ref(false)                 // 弹窗可见
 const currentAnalysis = ref<RiskAnalysis | null>(null) // 当前展示的分析结果
+
+// ——— 行详情弹窗 ———
+const detailVisible = ref(false)
+const detailRow = ref<BidRecord | null>(null)
+
+function openDetail(row: BidRecord) {
+  detailRow.value = row
+  detailVisible.value = true
+}
+
+function detailFields(row: BidRecord): DetailField[] {
+  return [
+    { label: '投标记录 ID', value: row.bidRecordId },
+    { label: '公告 ID', value: row.invitationId },
+    { label: '投标人', value: row.bidderName },
+    { label: '报价', value: formatPrice(row.quotePrice) },
+    { label: '投标次序', value: row.bidNo },
+    { label: '投标时间', value: formatTime(row.bidAt) },
+    { label: '联系方式', value: row.bidderContact },
+    { label: '资信材料', value: row.credentials },
+  ]
+}
 
 onMounted(() => {
   void load()
@@ -58,7 +82,7 @@ async function onAnalyzeRisk(row: BidRecord) {
 
 <template>
   <div class="page">
-    <PageHeader title="投标记录列表" back-to="/purchaser" back-label="返回招标方入口" />
+    <PageHeader title="投标记录列表" back-to="/bid-inviter" back-label="返回招标方入口" />
 
     <!--声明整张表的数据来源-->
     <el-table
@@ -66,6 +90,8 @@ async function onAnalyzeRisk(row: BidRecord) {
         :data="rows"
         border
         stripe
+        class="clickable-table"
+        @row-click="openDetail"
         style="width: 100%"
     >
       <template #empty>
@@ -102,7 +128,7 @@ async function onAnalyzeRisk(row: BidRecord) {
             size="small"
             :loading="analyzingId === row.bidRecordId"
             :disabled="analyzingId !== null && analyzingId !== row.bidRecordId"
-            @click="onAnalyzeRisk(row)"
+            @click.stop="onAnalyzeRisk(row)"
           >
             {{ analyzingId === row.bidRecordId ? '分析中...' : '风险分析' }}
           </el-button>
@@ -144,8 +170,11 @@ async function onAnalyzeRisk(row: BidRecord) {
           <el-form-item label="投标记录 ID">{{ currentAnalysis.bidRecordId }}</el-form-item>
           <el-form-item label="投标人">{{ currentAnalysis.bidderName }}</el-form-item>
           <el-form-item label="风险等级">
-            <el-tag :type="RISK_LEVEL_TYPE[currentAnalysis.riskLevel] ?? 'info'">
-              {{ currentAnalysis.riskLevel }}
+            <el-tag
+              :type="RISK_LEVEL_TYPE[currentAnalysis.riskLevel] ?? 'info'"
+              :class="RISK_LEVEL_TAG_CLASS[currentAnalysis.riskLevel] ?? ''"
+            >
+              {{ RISK_LEVEL_LABEL[currentAnalysis.riskLevel] ?? currentAnalysis.riskLevel }}
             </el-tag>
           </el-form-item>
           <el-form-item label="风险摘要">
@@ -154,13 +183,17 @@ async function onAnalyzeRisk(row: BidRecord) {
           <el-form-item label="建议">
             <div class="risk-text">{{ currentAnalysis.suggestions }}</div>
           </el-form-item>
-          <el-form-item v-if="currentAnalysis.promptVersion" label="提示词版本">
-            {{ currentAnalysis.promptVersion }}
-          </el-form-item>
           <el-form-item label="分析时间">{{ formatTime(currentAnalysis.analyzedAt) }}</el-form-item>
         </el-form>
       </div>
     </el-dialog>
+
+    <!-- 行详情弹窗 -->
+    <DetailDialog
+        v-model="detailVisible"
+        :title="`投标记录详情 #${detailRow?.bidRecordId ?? ''}`"
+        :fields="detailRow ? detailFields(detailRow) : []"
+    />
   </div>
 </template>
 
@@ -171,8 +204,9 @@ async function onAnalyzeRisk(row: BidRecord) {
   max-height: 200px;
   overflow-y: auto;
   padding: 8px 12px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  background: var(--lc-surface-muted);
+  border: 1px solid var(--lc-border);
+  border-radius: var(--lc-radius-sm);
   line-height: 1.6;
 }
 </style>

@@ -13,8 +13,8 @@
  *   listBidHandlers       ↔ GET  /bid-handler-info
  *
  * 调用方(view):
- *   - purchaser/BidHandlerInfo/List.vue   → listBidHandlers
- *   - purchaser/BidHandlerInfo/Create.vue → createBidHandlerInfo
+ *   - bid-inviter/BidHandlerInfo/List.vue   → listBidHandlers
+ *   - bid-inviter/BidHandlerInfo/Create.vue → createBidHandlerInfo
  *
  * 业务注意: BE 在 add 后会异步发送通知邮件到 targetEmail(失败不影响主流程)。
  */

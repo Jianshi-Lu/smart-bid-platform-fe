@@ -18,6 +18,8 @@ export default defineConfig({
     proxy: {
       '/invitation-for-bid': { target: 'http://localhost:8080', changeOrigin: true },
       '/bid-handler-info':   { target: 'http://localhost:8080', changeOrigin: true },
+      '/bidder':             { target: 'http://localhost:8080', changeOrigin: true },
+      '/bid-inviter':          { target: 'http://localhost:8080', changeOrigin: true },
       '/bid-record':         { target: 'http://localhost:8080', changeOrigin: true },
       '/risk-analysis':      { target: 'http://localhost:8080', changeOrigin: true },
       '/credential-files':   { target: 'http://localhost:8080', changeOrigin: true },

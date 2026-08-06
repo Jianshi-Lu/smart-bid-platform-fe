@@ -32,7 +32,7 @@
  */
 import type { Component } from 'vue'
 import { useRouter } from 'vue-router'
-import { Document } from '@element-plus/icons-vue'
+import { Document, Tickets } from '@element-plus/icons-vue'
 
 interface HomeEntry {
     /** 卡片主标题 */
@@ -50,21 +50,37 @@ const router = useRouter()
 const entries: HomeEntry[] = [
     {
         title: '投标项目列表',
-        description: '查看所有招标公告,选择项目进行投标',
+        description: '浏览招标公告并参与投标',
         path: '/supplier/invitation/list',
         icon: Document,
+    },
+    {
+        title: '我的投标',
+        description: '管理投标记录与资信材料',
+        path: '/supplier/my-bids',
+        icon: Tickets,
     },
 ]
 
 function go(path: string) {
   router.push(path)
 }
+
 </script>
 
 <template>
     <div class="home">
-        <h1>投标方入口</h1>
-        <p class="subtitle">请选择操作:</p>
+        <div class="home-topbar">
+            <div>
+                <h1>投标方入口</h1>
+                <p class="subtitle">请选择操作:</p>
+            </div>
+            <div class="home-actions">
+                <el-button type="primary" @click="go('/supplier/my-bids')">
+                    我的投标
+                </el-button>
+            </div>
+        </div>
 
         <el-row :gutter="20">
             <el-col
@@ -77,7 +93,9 @@ function go(path: string) {
             >
                 <el-card class="home-card" shadow="hover" @click="go(entry.path)">
                     <div class="card-header">
-                        <el-icon :size="24"><component :is="entry.icon" /></el-icon>
+                        <span class="card-icon-chip">
+                            <el-icon :size="18"><component :is="entry.icon" /></el-icon>
+                        </span>
                         <h3>{{ entry.title }}</h3>
                     </div>
                     <p class="description">{{ entry.description }}</p>
@@ -85,9 +103,6 @@ function go(path: string) {
             </el-col>
         </el-row>
 
-        <div class="home-footer">
-            <el-button @click="go('/')">← 返回首页</el-button>
-        </div>
     </div>
 </template>
 
@@ -95,45 +110,84 @@ function go(path: string) {
 .home {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 32px 16px;
+    padding: 36px 16px 40px;
+}
+.home-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.home-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 .home h1 {
     margin: 0 0 8px;
     font-size: 28px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--lc-text);
 }
 .subtitle {
-    color: #999;
+    color: var(--lc-text-secondary);
     margin: 0 0 24px;
 }
 .home-card {
+    height: 100%;
     cursor: pointer;
     margin-bottom: 20px;
-    transition: transform 0.2s;
+    border: 1px solid var(--lc-border);
+    border-radius: var(--lc-radius-lg);
+    background: var(--lc-surface);
+    box-shadow: var(--lc-shadow-sm);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
 .home-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: var(--lc-shadow-md);
+}
+.home-card :deep(.el-card__body) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
 }
 .card-header {
     display: flex;
     align-items: center;
+    gap: 12px;
+}
+.card-icon-chip {
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--lc-accent-soft);
+    color: var(--lc-accent);
+    flex-shrink: 0;
 }
 .card-header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 17px;
+    font-weight: 650;
+    color: var(--lc-text);
 }
 .description {
-    color: #666;
-    font-size: 14px;
+    color: var(--lc-text-secondary);
+    font-size: 13px;
     line-height: 1.5;
-    margin: 0;
+    margin: 8px 0 0;
     text-align: center;
-}
-.home-footer {
-    margin-top: 32px;
-    display: flex;
-    justify-content: flex-end;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 </style>

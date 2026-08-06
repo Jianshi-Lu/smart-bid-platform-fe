@@ -29,8 +29,8 @@
  *   - RiskLevel    是 riskLevel 字段的类型,被 RiskAnalysis + shared/utils/el-tag.ts 引用
  *
  * 调用方(view):
- *   - purchaser/RiskAnalysis/List.vue:        RiskAnalysis + RiskLevel + ListRequest
- *   - purchaser/BidRecord/List.vue (弹窗):    RiskAnalysis(行内风险分析按钮)
+ *   - bid-inviter/RiskAnalysis/List.vue:        RiskAnalysis + RiskLevel + ListRequest
+ *   - bid-inviter/BidRecord/List.vue (弹窗):    RiskAnalysis(行内风险分析按钮)
  *   - api/bid-record.ts:                      analyzeRisk 返回 RiskAnalysis
  *   - shared/utils/el-tag.ts:                 RISK_LEVEL_TYPE 用 RiskLevel 作 key
  *

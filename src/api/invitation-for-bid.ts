@@ -19,9 +19,9 @@
  *   updateInvitationForBidStatus  ↔ POST   /invitation-for-bid/status-update
  *
  * 调用方(view):
- *   - purchaser/InvitationForBid/List.vue → listInvitationForBids
- *   - purchaser/InvitationForBid/Create.vue → createInvitationForBid
- *   - purchaser/InvitationForBid/Edit.vue → getInvitationForBid + updateInvitationForBid
+ *   - bid-inviter/InvitationForBid/List.vue → listInvitationForBids
+ *   - bid-inviter/InvitationForBid/Create.vue → createInvitationForBid
+ *   - bid-inviter/InvitationForBid/Edit.vue → getInvitationForBid + updateInvitationForBid
  *   - List.vue (操作列) → updateInvitationForBidStatus
  *   - supplier/InvitationList.vue → listInvitationForBids (跨角色复用)
  *   - supplier/BidRecordCreate.vue → getInvitationForBid (跨模块)

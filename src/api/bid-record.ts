@@ -37,8 +37,8 @@
  *   analyzeRisk      ↔ POST /bid-record/analyze-risk/{id}     (BE 同步 DeepSeek → 落库 risk_analysis)
  *
  * 调用方(view):
- *   - purchaser/BidRecord/List.vue   → listBidRecords + analyzeRisk (行内按钮)
- *   - purchaser/BidRecord/Create.vue → createBidRecord
+ *   - bid-inviter/BidRecord/List.vue   → listBidRecords + analyzeRisk (行内按钮)
+ *   - bid-inviter/BidRecord/Create.vue → createBidRecord
  *   - supplier/BidRecordCreate.vue   → createBidRecord (跨角色)
  *   - getBidRecord 为后续资信上传页校验路由中的 bidRecordId 预留，当前尚无对应 view/route
  */

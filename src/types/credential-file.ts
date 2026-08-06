@@ -18,6 +18,5 @@ export interface CredentialFile {
 }
 
 export interface CredentialFileUploadResponse {
-    uploadBatchId: string
     files: CredentialFile[]
 }

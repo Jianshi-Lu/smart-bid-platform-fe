@@ -62,6 +62,17 @@ export interface AddRequest {
 }
 
 /**
+ * 更新投标记录请求(PATCH 语义，null/undefined 字段表示"不修改")。
+ * 对齐 BE UpdateRequest：不开放 invitationId / bidNo / bidAt / 账号归属修改。
+ */
+export interface UpdateRequest {
+    bidderName?: string
+    quotePrice?: number
+    bidderContact?: string
+    credentials?: string
+}
+
+/**
  * 列表查询参数,字段名严格对齐 BE 的 @RequestParam 形参名。
  *
  * BE 默认值: page=1, pageSize=10, sort="bid_record_id desc"。

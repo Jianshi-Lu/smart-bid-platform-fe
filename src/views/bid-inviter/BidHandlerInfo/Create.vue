@@ -41,7 +41,7 @@ async function onSubmit() {
 
 <template>
   <div class="page">
-    <PageHeader title="创建招标经办人" back-to="/purchaser" back-label="返回招标方入口" />
+    <PageHeader title="创建招标经办人" back-to="/bid-inviter" back-label="返回招标方入口" />
 
     <el-card class="create-form-card page-card">
       <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">

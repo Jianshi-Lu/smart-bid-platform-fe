@@ -49,7 +49,7 @@ const submitting = ref(false)
 
 // ——— 返回列表(模板按钮 + onSubmit 成功共用) ———
 function goBack() {
-  router.push('/purchaser/invitation/list')
+  router.push('/bid-inviter/invitation/list')
 }
 
 async function loadEntity() {
@@ -119,7 +119,7 @@ async function onSubmit() {
   <div class="page">
     <PageHeader
       title="编辑招标公告"
-      back-to="/purchaser/invitation/list"
+      back-to="/bid-inviter/invitation/list"
       back-label="返回列表"
     />
 

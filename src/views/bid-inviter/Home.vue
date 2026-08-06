@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 招标方首页(/purchaser)。
+ * 招标方首页(/bid-inviter)。
  *
  * 设计: 按业务模块分组,每张卡片 = 1 个模块,卡内用 router-link 列出该模块下
  * 的所有动作(列表/创建等)。整张卡不绑定跳转,只触发 hover 阴影效果。
@@ -44,7 +44,7 @@ import {
     User,
 } from '@element-plus/icons-vue'
 import ChatAgentPanel from '@/shared/components/ChatAgentPanel.vue'
-import KnowledgeFileUploadPanel from '@/views/purchaser/components/KnowledgeFileUploadPanel.vue'
+import KnowledgeFileUploadPanel from '@/views/bid-inviter/components/KnowledgeFileUploadPanel.vue'
 
 interface HomeAction {
     /** 子项标签, e.g. '公告列表' */
@@ -72,8 +72,8 @@ const groups: HomeGroup[] = [
         description: '查看/管理/创建招标公告',
         icon: Document,
         actions: [
-            { label: '公告列表', path: '/purchaser/invitation/list',   icon: List },
-            { label: '创建公告', path: '/purchaser/invitation/create', icon: Plus },
+            { label: '公告列表', path: '/bid-inviter/invitation/list',   icon: List },
+            { label: '创建公告', path: '/bid-inviter/invitation/create', icon: Plus },
         ],
     },
     {
@@ -81,8 +81,8 @@ const groups: HomeGroup[] = [
         description: '管理招标经办人信息',
         icon: User,
         actions: [
-            { label: '经办人列表', path: '/purchaser/bid-handler-info/list',   icon: List },
-            { label: '新建经办人', path: '/purchaser/bid-handler-info/create', icon: Plus },
+            { label: '经办人列表', path: '/bid-inviter/bid-handler-info/list',   icon: List },
+            { label: '新建经办人', path: '/bid-inviter/bid-handler-info/create', icon: Plus },
         ],
     },
     {
@@ -90,8 +90,8 @@ const groups: HomeGroup[] = [
         description: '查看/管理/创建投标记录',
         icon: List,
         actions: [
-            { label: '投标列表', path: '/purchaser/bid-record/list',   icon: List },
-            { label: '新建投标', path: '/purchaser/bid-record/create', icon: Plus },
+            { label: '投标列表', path: '/bid-inviter/bid-record/list',   icon: List },
+            { label: '新建投标', path: '/bid-inviter/bid-record/create', icon: Plus },
         ],
     },
     {
@@ -99,7 +99,7 @@ const groups: HomeGroup[] = [
         description: 'AI 风险分析历史结果',
         icon: DataAnalysis,
         actions: [
-            { label: '风险分析列表', path: '/purchaser/risk-analysis/list', icon: List },
+            { label: '风险分析列表', path: '/bid-inviter/risk-analysis/list', icon: List },
         ],
     },
 ]
@@ -122,9 +122,11 @@ const groups: HomeGroup[] = [
             >
                 <el-card class="group-card" shadow="hover">
                     <div class="group-header">
-                        <el-icon :size="24" class="group-icon">
-                            <component :is="g.icon" />
-                        </el-icon>
+                        <span class="group-icon-chip">
+                            <el-icon :size="18" class="group-icon">
+                                <component :is="g.icon" />
+                            </el-icon>
+                        </span>
                         <h3>{{ g.title }}</h3>
                     </div>
                     <p class="group-desc">{{ g.description }}</p>
@@ -157,14 +159,17 @@ const groups: HomeGroup[] = [
 .home {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 32px 16px;
+    padding: 36px 16px 40px;
 }
 .home h1 {
     margin: 0 0 8px;
     font-size: 28px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--lc-text);
 }
 .subtitle {
-    color: #999;
+    color: var(--lc-text-secondary);
     margin: 0 0 24px;
 }
 .group-column {
@@ -172,31 +177,57 @@ const groups: HomeGroup[] = [
 }
 .group-card {
     height: 100%;
+    border: 1px solid var(--lc-border);
+    border-radius: var(--lc-radius-lg);
+    background: var(--lc-surface);
+    box-shadow: var(--lc-shadow-sm);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+.group-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--lc-shadow-md);
 }
 .group-card :deep(.el-card__body) {
     display: flex;
     flex-direction: column;
+    padding: 24px;
 }
 .group-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+}
+.group-icon-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--lc-accent-soft);
+    color: var(--lc-accent);
+    flex-shrink: 0;
 }
 .group-icon {
-    color: var(--el-color-primary);
+    color: var(--lc-accent);
+    font-size: 18px;
 }
 .group-header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 17px;
+    font-weight: 650;
+    color: var(--lc-text);
 }
 .group-desc {
-    color: #999;
+    color: var(--lc-text-secondary);
     font-size: 13px;
     line-height: 1.5;
     margin: 8px 0 0;
 }
 .group-divider {
-    margin: 12px 0 8px;
+    margin: 14px 0 10px;
 }
 .action-list {
     display: flex;
@@ -207,34 +238,34 @@ const groups: HomeGroup[] = [
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 4px;
-    color: #333;
+    padding: 9px 10px;
+    color: var(--lc-text);
     text-decoration: none;
-    border-radius: 4px;
+    border-radius: 10px;
     transition: background-color 0.15s, color 0.15s;
 }
 .action-item:hover {
-    background-color: var(--el-color-primary-light-9);
-    color: var(--el-color-primary);
+    background-color: var(--lc-accent-soft);
+    color: var(--lc-accent);
 }
 .action-icon {
-    color: #666;
+    color: var(--lc-text-secondary);
     font-size: 16px;
 }
 .action-item:hover .action-icon {
-    color: var(--el-color-primary);
+    color: var(--lc-accent);
 }
 .action-label {
     flex: 1;
     font-size: 14px;
 }
 .action-arrow {
-    color: #ccc;
+    color: var(--lc-text-muted);
     font-size: 14px;
     transition: transform 0.15s, color 0.15s;
 }
 .action-item:hover .action-arrow {
-    color: var(--el-color-primary);
+    color: var(--lc-accent);
     transform: translateX(2px);
 }
 </style>

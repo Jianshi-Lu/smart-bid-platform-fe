@@ -12,7 +12,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getInvitationForBid } from '@/api/invitation-for-bid'
-import { createBidRecord } from '@/api/bid-record'
+import { createBidderBidRecord } from '@/api/bidder-bid-record'
 import CredentialFileUpload from '@/shared/components/CredentialFileUpload.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import { getErrorMessage } from '@/shared/utils/error'
@@ -88,7 +88,7 @@ async function onSubmit() {
   submitting.value = true
   created.value = null
   try {
-    const entity = await createBidRecord({
+    const entity = await createBidderBidRecord({
       ...form,
       invitationId: invitationId.value,
       quotePrice: form.quotePrice ?? 0,
@@ -198,6 +198,7 @@ async function onSubmit() {
       <CredentialFileUpload
         :bid-record-id="createdBidRecordId"
         :disabled="!canUploadCredentials"
+        bidder-mode
       />
     </el-card>
   </div>
@@ -221,13 +222,13 @@ async function onSubmit() {
 }
 
 .credential-card.is-locked {
-  background: #f5f7fa;
-  border-color: #dcdfe6;
+  background: var(--lc-surface-muted);
+  border-color: var(--lc-border-strong);
 }
 
 .credential-card.is-locked :deep(.el-card__header),
 .credential-card.is-locked :deep(.el-card__body) {
-  background: #f5f7fa;
+  background: var(--lc-surface-muted);
 }
 
 .card-header {

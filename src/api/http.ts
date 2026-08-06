@@ -13,6 +13,33 @@ export { ApiError } from '@/shared/errors/api-error'
 /** 全局 axios 实例,所有 api/ 模块统一使用,自动应用响应拦截器 */
 export const http = axios.create({})
 
+// 第 0 层：角色登录凭据统一注入（HTTP Basic）。
+// /bidder 前缀使用投标方凭据（bidderCredentials），其余业务前缀使用
+// 招标方凭据（bidInviterCredentials）；由 useBidderAuth / useBidInviterAuth 维护。
+// 最小鉴权实现每次请求都携带凭据，由后端实时校验。
+http.interceptors.request.use((config) => {
+    const url = config.url ?? ''
+    const key = url.startsWith('/bidder')
+        ? 'bidderCredentials'
+        : 'bidInviterCredentials'
+    const raw = localStorage.getItem(key)
+    if (raw) {
+        try {
+            const credentials = JSON.parse(raw) as {
+                username: string
+                password: string
+            }
+            const basic = toBase64(
+                `${credentials.username}:${credentials.password}`
+            )
+            config.headers.set('Authorization', `Basic ${basic}`)
+        } catch {
+            localStorage.removeItem('bidderCredentials')
+        }
+    }
+    return config
+})
+
 http.interceptors.response.use(
     // 第 1 层：HTTP 200 也可能携带业务失败，按新版 success 判断。
     (resp) => {
@@ -29,6 +56,17 @@ http.interceptors.response.use(
         const status = err?.response?.status
         const body = err?.response?.data
 
+        // 登录失效时清理对应角色的本地会话，页面/守卫负责跳转登录。
+        const code = String((body as Record<string, unknown>)?.code ?? '')
+        if (status === 401 && code.startsWith('BIDDER_ACCOUNT.')) {
+            localStorage.removeItem('bidderCredentials')
+            localStorage.removeItem('bidderAccount')
+        }
+        if (status === 401 && code.startsWith('BID_INVITER_ACCOUNT.')) {
+            localStorage.removeItem('bidInviterCredentials')
+            localStorage.removeItem('bidInviterAccount')
+        }
+
         // HTTP 错误若仍带有 Result 信封，优先使用后端稳定错误码。
         if (body && typeof body === 'object' && 'code' in body) {
             return Promise.reject(
@@ -43,6 +81,16 @@ http.interceptors.response.use(
         return Promise.reject(err)
     }
 )
+
+/** 按 UTF-8 编码字符串为 Base64（支持中文用户名/密码）。 */
+function toBase64(value: string): string {
+    const bytes = new TextEncoder().encode(value)
+    let binary = ''
+    bytes.forEach((byte) => {
+        binary += String.fromCharCode(byte)
+    })
+    return btoa(binary)
+}
 
 /** 判断统一 Result 是否明确表示业务失败。 */
 function isBusinessFailure(body: unknown): body is {
