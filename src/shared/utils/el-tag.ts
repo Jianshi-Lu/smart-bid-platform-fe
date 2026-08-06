@@ -37,3 +37,14 @@ export const RISK_LEVEL_TYPE: Record<import('@/types/risk-analysis').RiskLevel, 
   HIGH: 'danger',
   CRITICAL: 'danger',
 }
+
+/**
+ * 风险等级额外样式类：严重（CRITICAL）与高（HIGH）都用 danger 主色，
+ * 通过该 class 加深严重等级，形成视觉区分。
+ */
+export const RISK_LEVEL_TAG_CLASS: Record<import('@/types/risk-analysis').RiskLevel, string> = {
+  LOW: '',
+  MEDIUM: '',
+  HIGH: '',
+  CRITICAL: 'is-critical',
+}

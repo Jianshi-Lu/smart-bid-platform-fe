@@ -47,17 +47,17 @@ const router = useRouter()
 }
 .not-found h1 {
     font-size: 96px;
-    color: #ddd;
+    color: var(--lc-border-strong);
     margin: 0 0 16px;
     line-height: 1;
 }
 .not-found .title {
-    color: #666;
+    color: var(--lc-text-secondary);
     font-size: 18px;
     margin: 0 0 8px;
 }
 .not-found .path-hint {
-    color: #999;
+    color: var(--lc-text-muted);
     font-family: monospace;
     font-size: 13px;
     margin: 0 0 32px;
