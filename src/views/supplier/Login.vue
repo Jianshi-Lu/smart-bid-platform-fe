@@ -170,8 +170,8 @@ async function onSubmit() {
     </el-card>
 
     <div class="login-back">
-      <el-button link @click="router.push('/supplier')">
-        返回投标方首页
+      <el-button link @click="router.push('/')">
+        返回角色选择
       </el-button>
     </div>
   </div>

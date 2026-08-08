@@ -3,7 +3,8 @@ import type { PageRequest, PageResult } from '@/types/common'
 
 interface UsePagedListOptions<T> {
   fetchPage: (query: PageRequest) => Promise<PageResult<T>>
-  sort: string
+  /** 固定排序或按需动态返回排序（如 ID 正/倒序切换）。 */
+  sort: string | (() => string)
   pageSize?: number
   onError?: (error: unknown) => void
 }
@@ -28,7 +29,7 @@ export function usePagedList<T>(options: UsePagedListOptions<T>) {
       const data = await options.fetchPage({
         page,
         pageSize,
-        sort: options.sort,
+        sort: typeof options.sort === 'function' ? options.sort() : options.sort,
       })
 
       if (requestId !== latestRequestId) return

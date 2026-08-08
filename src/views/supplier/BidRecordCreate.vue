@@ -13,9 +13,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getInvitationForBid } from '@/api/invitation-for-bid'
 import { createBidderBidRecord } from '@/api/bidder-bid-record'
+import AmountInput from '@/shared/components/AmountInput.vue'
 import CredentialFileUpload from '@/shared/components/CredentialFileUpload.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import { getErrorMessage } from '@/shared/utils/error'
+import { enumLabel } from '@/shared/utils/dict'
 import type { InvitationForBid } from '@/types/invitation-for-bid'
 import type { AddRequest, BidRecord } from '@/types/bid-record'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
@@ -60,7 +62,7 @@ const canUploadCredentials = computed(
 // ——— 生命周期 ———
 onMounted(async () => {
   if (invitationId.value === null) {
-    ElMessage.error('缺少有效的邀请 ID')
+    ElMessage.error('缺少有效的招标项目')
     router.replace('/supplier/invitation/list')
     return
   }
@@ -81,7 +83,7 @@ async function onSubmit() {
   if (submitting.value || createdBidRecordId.value !== null) return
 
   if (invitationId.value === null) {
-    ElMessage.error('缺少有效的邀请 ID')
+    ElMessage.error('缺少有效的招标项目')
     router.replace('/supplier/invitation/list')
     return
   }
@@ -94,12 +96,10 @@ async function onSubmit() {
       quotePrice: form.quotePrice ?? 0,
     })
     if (!Number.isInteger(entity.bidRecordId) || entity.bidRecordId <= 0) {
-      throw new Error('投标响应缺少有效的投标记录 ID')
+      throw new Error('投标记录创建失败，请稍后重试')
     }
     created.value = entity
-    ElMessage.success(
-      `投标成功 ID=${entity.bidRecordId} 投标次序=${entity.bidNo}`
-    )
+    ElMessage.success('投标成功')
   } catch (e) {
     const msg = getErrorMessage(e)
     ElMessage.error(msg)
@@ -133,7 +133,7 @@ async function onSubmit() {
           <el-descriptions-item label="招标主体">{{ displayOrDash(selectedInvitation.tenderingParty) }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag v-if="selectedInvitation.status" :type="BID_NOTICE_STATUS_TYPE[selectedInvitation.status] ?? 'info'">
-              {{ selectedInvitation.status }}
+              {{ enumLabel('bidNoticeStatus', selectedInvitation.status) }}
             </el-tag>
             <span v-else>-</span>
           </el-descriptions-item>
@@ -148,7 +148,7 @@ async function onSubmit() {
     </el-card>
 
     <!--
-      el-card #2: 投标表单(el-form,严格对齐 BidRecord/Create.vue 字段)
+      el-card #2: 投标表单(el-form,严格对齐投标方创建请求字段)
       invitationId 通过 form.invitationId + :disabled 显示固定值
     -->
     <el-card class="bid-form-card page-card">
@@ -162,14 +162,16 @@ async function onSubmit() {
       >
         <el-form-item label="招标公告 ID" required>
           <!-- :min="1" + :disabled: BE @NotNull 校验要求 > 0,且不可修改 -->
-          <el-input-number v-model="form.invitationId" :min="1" :disabled="true" />
+          <el-input
+            :model-value="form.invitationId != null ? String(form.invitationId) : ''"
+            disabled
+          />
         </el-form-item>
         <el-form-item label="投标人名称" required>
           <el-input v-model="form.bidderName" maxlength="100" show-word-limit />
         </el-form-item>
         <el-form-item label="报价" required>
-          <!-- :precision="2" :step="0.01" 强制 2 位小数,匹配 BE BigDecimal -->
-          <el-input-number v-model="form.quotePrice" :min="0" :precision="2" :step="0.01" />
+          <AmountInput v-model="form.quotePrice" placeholder="请输入报价" />
         </el-form-item>
         <el-form-item label="联系方式" required>
           <el-input v-model="form.bidderContact" maxlength="255" show-word-limit />

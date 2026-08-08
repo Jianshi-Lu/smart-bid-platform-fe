@@ -8,20 +8,30 @@
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { CaretBottom, CaretTop } from '@element-plus/icons-vue'
 import { listBidRecords, analyzeRisk } from '@/api/bid-record'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
+import { usePersistedSort } from '@/shared/composables/usePersistedSort'
 import { getErrorMessage } from '@/shared/utils/error'
 import type { BidRecord } from '@/types/bid-record'
 import type { RiskAnalysis } from '@/types/risk-analysis'
 import { RISK_LEVEL_TAG_CLASS, RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
-import { RISK_LEVEL_LABEL } from '@/shared/utils/dict'
+import { enumLabel } from '@/shared/utils/dict'
 import { formatPrice, formatTime } from '@/shared/utils/format'
+
+/** ID 列排序方向：desc 倒序（默认）/ asc 正序。 */
+const sortDirection = usePersistedSort('sort:bid-inviter:bid-record:id')
+
+function toggleSort() {
+  sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+  void load(1)
+}
 
 const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidRecord>({
   fetchPage: listBidRecords,
-  sort: 'bid_record_id desc',
+  sort: () => `bid_record_id ${sortDirection.value}`,
   onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
@@ -68,7 +78,9 @@ async function onAnalyzeRisk(row: BidRecord) {
     currentAnalysis.value = result
     riskDialogVisible.value = true
     // ⑨ UI 反馈分析完成
-    ElMessage.success(`风险分析完成,等级=${result.riskLevel}`)
+    ElMessage.success(
+        `风险分析完成，等级：${enumLabel('riskLevel', result.riskLevel)}`,
+    )
   } catch (e) {
     // 分析接口异常沿用统一展示文案。
     const msg = getErrorMessage(e)
@@ -98,7 +110,21 @@ async function onAnalyzeRisk(row: BidRecord) {
         <el-empty description="暂无投标记录" />
       </template>
       <!--声明每一列从行数据里取哪个字段-->
-      <el-table-column prop="bidRecordId" label="ID" width="80" />
+      <el-table-column prop="bidRecordId" width="80">
+        <template #header>
+          <div class="column-header">
+            ID
+            <el-button
+              class="sort-toggle"
+              text
+              size="small"
+              :icon="sortDirection === 'desc' ? CaretBottom : CaretTop"
+              :title="sortDirection === 'desc' ? '当前倒序，点击切换正序' : '当前正序，点击切换倒序'"
+              @click.stop="toggleSort"
+            />
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="invitationId" label="公告 ID" width="100" />
       <el-table-column prop="bidderName" label="投标人" min-width="160" show-overflow-tooltip />
       <el-table-column label="报价" width="140">
@@ -174,7 +200,7 @@ async function onAnalyzeRisk(row: BidRecord) {
               :type="RISK_LEVEL_TYPE[currentAnalysis.riskLevel] ?? 'info'"
               :class="RISK_LEVEL_TAG_CLASS[currentAnalysis.riskLevel] ?? ''"
             >
-              {{ RISK_LEVEL_LABEL[currentAnalysis.riskLevel] ?? currentAnalysis.riskLevel }}
+              {{ enumLabel('riskLevel', currentAnalysis.riskLevel) }}
             </el-tag>
           </el-form-item>
           <el-form-item label="风险摘要">

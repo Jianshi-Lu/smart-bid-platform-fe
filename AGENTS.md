@@ -61,14 +61,14 @@ src/
 │   ├── bid-handler-info.ts    招标经办人 API
 │   ├── bid-record.ts          投标记录 CRUD/风险分析触发 API
 │   ├── risk-analysis.ts       风险分析历史查询 API
-│   └── credential-file.ts     资信文件上传/删除 API
+│   └── credential-file.ts     资信文件列表/上传/删除 API
 ├── types/                     与 Java DTO/响应字段对齐的 TypeScript 类型
 ├── views/
 │   ├── common/                角色选择、404
 │   ├── purchaser/             招标方首页及四个业务模块
 │   └── supplier/              投标方首页、项目列表、投标录入
 ├── shared/
-│   ├── components/            PageHeader、CredentialFileUpload
+│   ├── components/            PageHeader、CredentialFileUpload、FileLibraryPanel
 │   ├── composables/           usePagedList 分页与旧请求保护
 │   ├── errors/                ApiError
 │   └── utils/                 错误文案、格式化、Element Plus 标签颜色
@@ -113,7 +113,7 @@ api/{module} → api/http.ts → shared/errors/api-error.ts
 
 ## 5. Java 后端契约与 API 模块
 
-当前前端 API 层共有 15 个函数，按模块分组；这不是 Java 后端的全部端点。
+当前前端 API 层共有 16 个函数，按模块分组；这不是 Java 后端的全部端点。
 
 | 前端模块 | API 函数/端点 | 页面调用方 |
 |---|---|---|
@@ -121,7 +121,7 @@ api/{module} → api/http.ts → shared/errors/api-error.ts
 | 招标经办人 | 创建、分页查询，共 2 个：`/bid-handler-info/*` | 招标方经办人页面 |
 | 投标记录 | 创建、按 ID 查询、分页查询、`POST /bid-record/analyze-risk/{id}`，共 4 个 | 招标方投标页面；投标方录入复用创建 |
 | 风险分析 | `GET /risk-analysis` 分页查询历史，共 1 个 | 招标方风险分析列表 |
-| 资信文件 | `POST /credential-files/upload`、`DELETE /credential-files/{uploadBatchId}/files/{fileId}`，共 2 个 | `CredentialFileUpload.vue` |
+| 资信文件 | `GET/POST /bidder/bid-records/{id}/credential-files`（列表/上传）、`DELETE /bidder/bid-records/{id}/credential-files/{fileId}`，共 3 个 | `CredentialFileUpload.vue`（投标录入）、`FileLibraryPanel.vue`（我的投标详情） |
 | chat-agent | `POST /chat-agent/chat`，共 1 个 | `ChatAgentPanel.vue` |
 
 风险分析按钮位于投标记录 API/页面，但 Java 当前实际由 `RiskAnalysisController` 承载风险分析入口；前端只把它视为同步 HTTP 操作，不直接参与转换、Markdown 汇总或模型调用。
@@ -219,12 +219,18 @@ onMounted → usePagedList.load()
 
 `BidRecordCreate.vue` 在创建成功前禁用资信上传，并在成功后锁定投标表单，避免投标记录 ID 尚未存在或重复创建导致文件归属错误。
 
-`CredentialFileUpload.vue` 的职责只到浏览器文件和上传批次：
+`FileLibraryPanel.vue` 是从招标方知识文件面板抽离的通用文件面板：选择/逐个上传/
+重选/取消、乐观占位、列表、详情、可选重试与删除均由适配器 Props 注入，
+招标方知识文件与投标方资信材料通过薄包装复用（见 `views/bid-inviter/components/
+KnowledgeFileUploadPanel.vue` 与 `views/supplier/MyBids.vue`）。
+
+`CredentialFileUpload.vue` 仍用于投标录入页（提交前锁定与校验语义），职责只到浏览器文件：
 
 - 使用原生 `<input type="file" multiple>` 获取 `File[]`。
 - FormData 重复追加 `files`，另加 `bidRecordId`；追加同一批次时带后端第一次返回的 `uploadBatchId`。
 - 不手动设置 `Content-Type`，让浏览器生成 multipart boundary。
-- 维护 `SELECTED/UPLOADING/FAILED` 的待上传状态和 `UPLOADED/REMOVED` 的已上传状态。
+- 维护 `SELECTED/UPLOADING/FAILED` 的待上传状态和 `UPLOADED/REMOVED` 的已上传状态；
+  已上传列表为前端内存态，不向后端回读（我的投标详情使用 FileLibraryPanel 回读列表）。
 - 不读取绝对路径、不调用 Python、不负责 Markdown 转换或风险分析。
 - 删除前要求后端返回有效 `fileId`；缺少 `fileId` 时前端禁用删除并提示。删除接口最终是否物理删除由后端决定，当前前端不假设存储实现。
 

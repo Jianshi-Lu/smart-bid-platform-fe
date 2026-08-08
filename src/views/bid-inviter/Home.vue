@@ -2,21 +2,20 @@
 /**
  * 招标方首页(/bid-inviter)。
  *
- * 设计: 按业务模块分组,每张卡片 = 1 个模块,卡内用 router-link 列出该模块下
- * 的所有动作(列表/创建等)。整张卡不绑定跳转,只触发 hover 阴影效果。
+ * 设计: 按业务模块分组,每张卡片 = 1 个模块 = 1 个整卡可点击的入口,
+ * 点击进入该模块列表;创建入口统一放在对应列表页底部。
  *
  * 当前 4 groups:
- *   - 招标公告:列表 + 创建
- *   - 招标经办人:列表 + 创建
- *   - 投标记录:列表 + 创建
- *   - 风险分析:仅列表(由投标列表的"风险分析"按钮触发生成)
+ *   - 招标公告:整卡单一入口(点击卡片进入公告列表,列表底部提供创建按钮)
+ *   - 招标经办人:整卡入口 → 经办人列表(列表底部新建)
+ *   - 投标记录:整卡入口 → 投标列表(列表底部新建)
+ *   - 风险分析:整卡入口 → 风险分析列表(无新增入口)
  *   - 首页下方:ChatAgentPanel 会话问答与会话切换
  *
  * 加新模块: 往 groups 数组追加一个对象,模板无需改动。
  *
  * ─── Class hierarchy ───
- *   interface HomeAction { label, path, icon }
- *   interface HomeGroup  { title, description, icon, actions[] }
+ *   interface HomeGroup  { title, description, icon, mainPath }
  *   const groups: HomeGroup[]                    // 4 个模块的静态数据
  *   - exports: 无(无 defineExpose / 无 emit)
  *   - props: 无
@@ -36,24 +35,13 @@
  */
 import type { Component } from 'vue'
 import {
-    ArrowRight,
     DataAnalysis,
     Document,
     List,
-    Plus,
     User,
 } from '@element-plus/icons-vue'
 import ChatAgentPanel from '@/shared/components/ChatAgentPanel.vue'
 import KnowledgeFileUploadPanel from '@/views/bid-inviter/components/KnowledgeFileUploadPanel.vue'
-
-interface HomeAction {
-    /** 子项标签, e.g. '公告列表' */
-    label: string
-    /** 子项跳转路径 */
-    path: string
-    /** 子项图标 */
-    icon: Component
-}
 
 interface HomeGroup {
     /** 模块主标题, e.g. '招标公告' */
@@ -62,8 +50,8 @@ interface HomeGroup {
     description: string
     /** 模块主图标(显示在卡片 header) */
     icon: Component
-    /** 模块下所有动作(至少 1 个) */
-    actions: HomeAction[]
+    /** 整卡入口:点击整卡跳转的路径 */
+    mainPath?: string
 }
 
 const groups: HomeGroup[] = [
@@ -71,36 +59,25 @@ const groups: HomeGroup[] = [
         title: '招标公告',
         description: '查看/管理/创建招标公告',
         icon: Document,
-        actions: [
-            { label: '公告列表', path: '/bid-inviter/invitation/list',   icon: List },
-            { label: '创建公告', path: '/bid-inviter/invitation/create', icon: Plus },
-        ],
+        mainPath: '/bid-inviter/invitation/list',
     },
     {
         title: '招标经办人',
-        description: '管理招标经办人信息',
+        description: '查看/管理/创建经办人',
         icon: User,
-        actions: [
-            { label: '经办人列表', path: '/bid-inviter/bid-handler-info/list',   icon: List },
-            { label: '新建经办人', path: '/bid-inviter/bid-handler-info/create', icon: Plus },
-        ],
+        mainPath: '/bid-inviter/bid-handler-info/list',
     },
     {
         title: '投标记录',
-        description: '查看/管理/创建投标记录',
+        description: '查看/管理投标记录',
         icon: List,
-        actions: [
-            { label: '投标列表', path: '/bid-inviter/bid-record/list',   icon: List },
-            { label: '新建投标', path: '/bid-inviter/bid-record/create', icon: Plus },
-        ],
+        mainPath: '/bid-inviter/bid-record/list',
     },
     {
         title: '风险分析',
         description: 'AI 风险分析历史结果',
         icon: DataAnalysis,
-        actions: [
-            { label: '风险分析列表', path: '/bid-inviter/risk-analysis/list', icon: List },
-        ],
+        mainPath: '/bid-inviter/risk-analysis/list',
     },
 ]
 </script>
@@ -120,34 +97,21 @@ const groups: HomeGroup[] = [
                 :md="12"
                 :lg="6"
             >
-                <el-card class="group-card" shadow="hover">
-                    <div class="group-header">
-                        <span class="group-icon-chip">
-                            <el-icon :size="18" class="group-icon">
-                                <component :is="g.icon" />
-                            </el-icon>
-                        </span>
-                        <h3>{{ g.title }}</h3>
-                    </div>
-                    <p class="group-desc">{{ g.description }}</p>
-                    <el-divider class="group-divider" />
-                    <div class="action-list">
-                        <router-link
-                            v-for="(a, j) in g.actions"
-                            :key="j"
-                            :to="a.path"
-                            class="action-item"
-                        >
-                            <el-icon class="action-icon">
-                                <component :is="a.icon" />
-                            </el-icon>
-                            <span class="action-label">{{ a.label }}</span>
-                            <el-icon class="action-arrow">
-                                <ArrowRight />
-                            </el-icon>
-                        </router-link>
-                    </div>
-                </el-card>
+                <router-link :to="g.mainPath ?? '/bid-inviter'" class="group-card-link">
+                    <el-card class="group-card single-entry" shadow="hover">
+                        <div class="single-entry-body">
+                            <span class="group-icon-chip">
+                                <el-icon :size="20" class="group-icon">
+                                    <component :is="g.icon" />
+                                </el-icon>
+                            </span>
+                            <div class="single-entry-text">
+                                <h3>{{ g.title }}</h3>
+                                <p class="group-desc">{{ g.description }}</p>
+                            </div>
+                        </div>
+                    </el-card>
+                </router-link>
             </el-col>
         </el-row>
         <KnowledgeFileUploadPanel />
@@ -175,6 +139,13 @@ const groups: HomeGroup[] = [
 .group-column {
     margin-bottom: 20px;
 }
+.group-card-link {
+    display: block;
+    height: auto;
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--lc-radius-lg);
+}
 .group-card {
     height: 100%;
     border: 1px solid var(--lc-border);
@@ -184,6 +155,36 @@ const groups: HomeGroup[] = [
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
+}
+.single-entry {
+    height: auto;
+}
+.single-entry :deep(.el-card__body) {
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 18px;
+}
+.single-entry-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+.single-entry-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.single-entry-text h3 {
+    margin: 0;
+    color: var(--lc-text);
+    font-size: 16px;
+    font-weight: 650;
+}
+.single-entry .group-desc {
+    margin: 0;
+    text-align: left;
 }
 .group-card:hover {
     transform: translateY(-3px);
@@ -225,47 +226,5 @@ const groups: HomeGroup[] = [
     font-size: 13px;
     line-height: 1.5;
     margin: 8px 0 0;
-}
-.group-divider {
-    margin: 14px 0 10px;
-}
-.action-list {
-    display: flex;
-    flex-direction: column;
-    margin-top: auto;
-}
-.action-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 10px;
-    color: var(--lc-text);
-    text-decoration: none;
-    border-radius: 10px;
-    transition: background-color 0.15s, color 0.15s;
-}
-.action-item:hover {
-    background-color: var(--lc-accent-soft);
-    color: var(--lc-accent);
-}
-.action-icon {
-    color: var(--lc-text-secondary);
-    font-size: 16px;
-}
-.action-item:hover .action-icon {
-    color: var(--lc-accent);
-}
-.action-label {
-    flex: 1;
-    font-size: 14px;
-}
-.action-arrow {
-    color: var(--lc-text-muted);
-    font-size: 14px;
-    transition: transform 0.15s, color 0.15s;
-}
-.action-item:hover .action-arrow {
-    color: var(--lc-accent);
-    transform: translateX(2px);
 }
 </style>

@@ -9,12 +9,28 @@ export type CredentialFileConvertStatus = string
 
 export interface CredentialFile {
     fileId: number
+    fileUuid: string
     fileOrder: number
     originalFilename: string
     contentType: string
     fileSize: number
+    originalSha256: string
+    convertedSha256?: string | null
+    storageType: string
     originalFilePath?: string
+    originalStorageStatus?: string | null
+    markdownFilePath?: string | null
     convertStatus: CredentialFileConvertStatus
+    errorMessage?: string | null
+    errorStage?: string | null
+    createdAt?: string | null
+    convertedAt?: string | null
+    boundAt?: string | null
+    deletedAt?: string | null
+    deletionStatus?: string | null
+    deletionFailedStage?: string | null
+    deletionErrorMessage?: string | null
+    deletionStartedAt?: string | null
 }
 
 export interface CredentialFileUploadResponse {

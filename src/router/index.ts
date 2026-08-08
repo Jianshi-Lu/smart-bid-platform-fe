@@ -42,7 +42,7 @@
  *     /bid-inviter                       → bid-inviter/Home.vue
  *     /bid-inviter/invitation/{list,create,edit/:id}  → 3 个 view
  *     /bid-inviter/bid-handler-info/{list,create}     → 2 个 view
- *     /bid-inviter/bid-record/{list,create}           → 2 个 view
+ *     /bid-inviter/bid-record/list                    → 1 个 view
  *     /bid-inviter/risk-analysis/list                 → 1 个 view
  *     /supplier                       → supplier/Home.vue
  *     /supplier/invitation/list       → supplier/InvitationList.vue
@@ -165,19 +165,6 @@ const routes: RouteRecordRaw[] = [
         },
     },
     {
-        path: '/bid-inviter/bid-record/create',
-        name: 'bid-inviter-bid-record-create',
-        component: () => import('@/views/bid-inviter/BidRecord/Create.vue'),
-        meta: {
-            title: '新建投标',
-            breadcrumb: [
-                { label: '招标方入口', path: '/bid-inviter' },
-                { label: '投标列表', path: '/bid-inviter/bid-record/list' },
-                { label: '新建投标' },
-            ],
-        },
-    },
-    {
         path: '/bid-inviter/risk-analysis/list',
         name: 'bid-inviter-risk-analysis-list',
         component: () => import('@/views/bid-inviter/RiskAnalysis/List.vue'),
@@ -212,10 +199,10 @@ const routes: RouteRecordRaw[] = [
         name: 'supplier-invitation-list',
         component: () => import('@/views/supplier/InvitationList.vue'),
         meta: {
-            title: '投标项目列表',
+            title: '项目列表',
             breadcrumb: [
                 { label: '投标方入口', path: '/supplier' },
-                { label: '投标项目列表' },
+                { label: '项目列表' },
             ],
         },
     },

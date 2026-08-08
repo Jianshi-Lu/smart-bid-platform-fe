@@ -104,7 +104,6 @@ const globalNav = [
                 title: '投标记录',
                 items: [
                     { label: '投标列表', path: '/bid-inviter/bid-record/list' },
-                    { label: '新建投标', path: '/bid-inviter/bid-record/create' },
                 ],
             },
             {
@@ -122,7 +121,7 @@ const globalNav = [
             {
                 title: '投标项目',
                 items: [
-                    { label: '投标项目列表', path: '/supplier/invitation/list' },
+                    { label: '项目列表', path: '/supplier/invitation/list' },
                 ],
             },
             {

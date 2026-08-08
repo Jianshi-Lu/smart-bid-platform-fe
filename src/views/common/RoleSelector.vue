@@ -49,11 +49,6 @@ function enter(role: RoleEntry): void {
 
 <template>
     <div class="role-selector">
-        <header class="role-selector-header">
-            <h1>智能招投标平台</h1>
-            <p class="subtitle">请选择入口</p>
-        </header>
-
         <el-row :gutter="32" justify="center">
             <el-col
                 v-for="role in roles"
@@ -85,26 +80,11 @@ function enter(role: RoleEntry): void {
 .role-selector {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 80px 16px 32px;
-}
-
-.role-selector-header {
-    text-align: center;
-    margin-bottom: 48px;
-}
-
-.role-selector-header h1 {
-    margin: 0 0 12px;
-    font-size: 32px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--lc-text);
-}
-
-.role-selector-header .subtitle {
-    color: var(--lc-text-secondary);
-    font-size: 16px;
-    margin: 0;
+    min-height: calc(100vh - 60px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 32px 16px;
 }
 
 .role-column {

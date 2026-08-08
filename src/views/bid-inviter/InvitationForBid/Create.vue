@@ -6,14 +6,18 @@
  * 三个日期字段按 ISO-8601 字符串发送，金额保留两位小数。
  * 必填与业务校验以后端 DTO 为准，请求异常统一交给 getErrorMessage 展示。
  */
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { listBidHandlers } from '@/api/bid-handler-info'
 import { createInvitationForBid } from '@/api/invitation-for-bid'
+import AmountInput from '@/shared/components/AmountInput.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import { getErrorMessage } from '@/shared/utils/error'
+import { enumLabel, enumOptions } from '@/shared/utils/dict'
+import type { BidHandlerInfo } from '@/types/bid-handler-info'
 import type { AddRequest, InvitationForBid } from '@/types/invitation-for-bid'
 
-// el-input-number 对 0 展示"空",所以用 null 占位,提交时 ?? 0 兜底
+// 保证金用 AmountInput 键盘输入,空值以 undefined 占位,提交时 ?? 0 兜底
 const form = reactive<AddRequest>({
   bidHandlerId: null as unknown as number,
   projectNo: '',
@@ -37,6 +41,32 @@ const form = reactive<AddRequest>({
 
 const submitting = ref(false)
 const created = ref<InvitationForBid | null>(null)
+const handlers = ref<BidHandlerInfo[]>([])
+const handlersLoading = ref(false)
+
+// 下拉选项只做展示映射，表单仍提交英文枚举值。
+const platformCategoryOptions = enumOptions('platformCategory')
+const tenderProcessOptions = enumOptions('tenderProcess')
+const tenderMethodOptions = enumOptions('tenderMethod')
+const purchaseMethodOptions = enumOptions('purchaseMethod')
+
+async function loadHandlers() {
+  handlersLoading.value = true
+  try {
+    const result = await listBidHandlers({
+      page: 1,
+      pageSize: 100,
+      sort: 'bid_handler_id asc',
+    })
+    handlers.value = result.list
+  } catch (e) {
+    ElMessage.error(`加载经办人列表失败: ${getErrorMessage(e, '')}`)
+  } finally {
+    handlersLoading.value = false
+  }
+}
+
+onMounted(loadHandlers)
 
 async function onSubmit() {
   submitting.value = true
@@ -47,7 +77,9 @@ async function onSubmit() {
       bidHandlerId: form.bidHandlerId ?? 0,
     })
     created.value = entity
-    ElMessage.success(`创建成功 ID=${entity.invitationId} 状态=${entity.status}`)
+    ElMessage.success(
+        `创建成功，状态：${enumLabel('bidNoticeStatus', entity.status)}`,
+    )
   } catch (e) {
     const msg = getErrorMessage(e)
     ElMessage.error(msg)
@@ -59,15 +91,31 @@ async function onSubmit() {
 
 <template>
   <div class="page">
-    <PageHeader title="创建招标公告" back-to="/bid-inviter" back-label="返回招标方入口" />
+    <PageHeader
+        title="创建招标公告"
+        back-to="/bid-inviter/invitation/list"
+        back-label="返回公告列表"
+    />
 
     <el-card class="create-form-card page-card">
       <el-form :model="form" label-width="120px">
       <el-divider content-position="left">基本信息</el-divider>
 
-            <el-form-item label="经办人 ID" required>
-                <!-- :min="1" 排除 0/负数:BE @NotNull 校验要求 > 0 -->
-                <el-input-number v-model="form.bidHandlerId" :min="1" />
+            <el-form-item label="经办人" required>
+                <el-select
+                    v-model="form.bidHandlerId"
+                    filterable
+                    :loading="handlersLoading"
+                    placeholder="请选择经办人"
+                    style="width: 100%"
+                >
+                    <el-option
+                        v-for="handler in handlers"
+                        :key="handler.bidHandlerId"
+                        :value="handler.bidHandlerId"
+                        :label="`${handler.bidHandlerId} ${handler.handlerName}（${handler.companyName} / ${handler.departmentName}）`"
+                    />
+                </el-select>
             </el-form-item>
       <el-form-item label="项目编号" required>
         <el-input v-model="form.projectNo" maxlength="50" show-word-limit />
@@ -79,16 +127,64 @@ async function onSubmit() {
       <el-divider content-position="left">流程信息</el-divider>
 
       <el-form-item label="平台采购类别">
-        <el-input v-model="form.platformCategory" maxlength="50" />
+        <el-select
+            v-model="form.platformCategory"
+            placeholder="请选择平台采购类别"
+            clearable
+            style="width: 100%"
+        >
+          <el-option
+              v-for="[value, label] in platformCategoryOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="招标流程">
-        <el-input v-model="form.tenderProcess" maxlength="50" />
+        <el-select
+            v-model="form.tenderProcess"
+            placeholder="请选择招标流程"
+            clearable
+            style="width: 100%"
+        >
+          <el-option
+              v-for="[value, label] in tenderProcessOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="招标方式">
-        <el-input v-model="form.tenderMethod" maxlength="50" />
+        <el-select
+            v-model="form.tenderMethod"
+            placeholder="请选择招标方式"
+            clearable
+            style="width: 100%"
+        >
+          <el-option
+              v-for="[value, label] in tenderMethodOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="采购方式">
-        <el-input v-model="form.purchaseMethod" maxlength="50" />
+        <el-select
+            v-model="form.purchaseMethod"
+            placeholder="请选择采购方式"
+            clearable
+            style="width: 100%"
+        >
+          <el-option
+              v-for="[value, label] in purchaseMethodOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+          />
+        </el-select>
       </el-form-item>
 
       <el-divider content-position="left">费用与规则</el-divider>
@@ -100,7 +196,7 @@ async function onSubmit() {
         <el-switch v-model="form.hasDocumentFee" />
       </el-form-item>
       <el-form-item label="保证金">
-        <el-input-number v-model="form.deposit" :min="0" :precision="2" :step="0.01" />
+        <AmountInput v-model="form.deposit" placeholder="请输入保证金金额" />
       </el-form-item>
       <el-form-item label="需要资信报告">
         <el-switch v-model="form.creditReportRequired" />

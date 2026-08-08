@@ -38,6 +38,38 @@ export const RISK_LEVEL_TYPE: Record<import('@/types/risk-analysis').RiskLevel, 
   CRITICAL: 'danger',
 }
 
+/** 知识文件转换状态 → 标签颜色。 */
+export const KNOWLEDGE_CONVERT_STATUS_TYPE: Record<string, ElementTagType> = {
+  UPLOADED: 'info',
+  CONVERTING: 'warning',
+  CONVERTED: 'success',
+  FAILED: 'danger',
+}
+
+/** 知识文件向量化状态 → 标签颜色。 */
+export const KNOWLEDGE_INDEX_STATUS_TYPE: Record<string, ElementTagType> = {
+  PENDING: 'info',
+  VECTORIZING: 'warning',
+  VECTORIZED: 'success',
+  FAILED: 'danger',
+}
+
+/** 资信文件转换状态 → 标签颜色。 */
+export const CREDENTIAL_CONVERT_STATUS_TYPE: Record<string, ElementTagType> = {
+  UPLOADING: 'info',
+  UPLOADED: 'info',
+  CONVERTING: 'warning',
+  CONVERTED: 'success',
+  FAILED: 'danger',
+}
+
+/** 原始文件对象存储状态 → 标签颜色。 */
+export const ORIGINAL_STORAGE_STATUS_TYPE: Record<string, ElementTagType> = {
+  STORING: 'warning',
+  STORED: 'success',
+  FAILED: 'danger',
+}
+
 /**
  * 风险等级额外样式类：严重（CRITICAL）与高（HIGH）都用 danger 主色，
  * 通过该 class 加深严重等级，形成视觉区分。

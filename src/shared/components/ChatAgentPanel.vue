@@ -51,7 +51,6 @@ const currentTitle = computed(() =>
 const editingTitle = ref(false)
 const draftTitle = ref('')
 const sidebarWidth = ref(250)
-const composerHeight = ref(150)
 
 function isLocalMessage(messageId: string): boolean {
     return messageId.startsWith('local-')
@@ -394,25 +393,6 @@ function startSidebarResize(event: MouseEvent) {
     document.body.style.cursor = 'col-resize'
 }
 
-function startComposerResize(event: MouseEvent) {
-    event.preventDefault()
-    const startY = event.clientY
-    const startHeight = composerHeight.value
-    const onMove = (moveEvent: MouseEvent) => {
-        composerHeight.value = Math.min(320, Math.max(140, startHeight + startY - moveEvent.clientY))
-    }
-    const onUp = () => {
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
-        document.body.style.userSelect = ''
-        document.body.style.cursor = ''
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'row-resize'
-}
-
 function renderMarkdown(content: string | null): string {
     if (!content) return ''
     return marked.parse(content, { async: false }) as string
@@ -561,9 +541,7 @@ onUnmounted(() => {
             <div class="answer-content markdown-body" v-html="renderMarkdown(answer)" />
         </div>
 
-        <div class="composer-resizer" @mousedown.prevent="startComposerResize" />
-
-        <div class="composer" :style="{ height: composerHeight + 'px' }">
+        <div class="composer">
             <el-input
                 v-model="question"
                 type="textarea"
@@ -597,7 +575,9 @@ onUnmounted(() => {
 .chat-agent-panel {
     max-width: 1200px;
     margin: 20px auto 0;
-    height: min(680px, calc(100vh - 140px));
+    height: auto;
+    min-height: min(480px, calc(100vh - 140px));
+    max-height: min(680px, calc(100vh - 140px));
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -729,7 +709,7 @@ onUnmounted(() => {
 .chat-header-name {
     margin: 0;
     color: var(--lc-text);
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 650;
 }
 
@@ -779,7 +759,7 @@ onUnmounted(() => {
 
 .user-message {
     align-self: flex-end;
-    text-align: right;
+    text-align: left;
 }
 
 .user-message .message-content {
@@ -821,18 +801,6 @@ onUnmounted(() => {
     background: var(--lc-accent-soft);
 }
 
-.composer-resizer {
-    height: 6px;
-    flex-shrink: 0;
-    cursor: row-resize;
-    background: transparent;
-    transition: background-color 0.15s ease;
-}
-
-.composer-resizer:hover {
-    background: var(--lc-accent-soft);
-}
-
 .composer {
     display: flex;
     flex-direction: column;
@@ -843,21 +811,11 @@ onUnmounted(() => {
     flex-shrink: 0;
 }
 
-.composer :deep(.el-textarea) {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-}
-
-.composer :deep(.el-textarea__inner) {
-    flex: 1;
-    height: 100%;
-    max-height: none;
-    resize: none;
-}
-
 .composer :deep(.el-textarea__inner) {
     color: var(--lc-text);
+    /* 保证拖拽缩小时仍至少容纳一行输入文字及必要的内边距。 */
+    min-height: max(36px, 1.5em);
+    resize: vertical;
 }
 
 .panel-actions {

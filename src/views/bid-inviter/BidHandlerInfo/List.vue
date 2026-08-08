@@ -6,17 +6,30 @@
  * 前端固定 pageSize=10，覆盖后端默认值 3。页面只负责五列业务字段的展示。
  */
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { CaretBottom, CaretTop, Plus } from '@element-plus/icons-vue'
 import { listBidHandlers } from '@/api/bid-handler-info'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
+import { usePersistedSort } from '@/shared/composables/usePersistedSort'
 import { getErrorMessage } from '@/shared/utils/error'
 import type { BidHandlerInfo } from '@/types/bid-handler-info'
 
+const router = useRouter()
+
+/** ID 列排序方向：desc 倒序（默认）/ asc 正序。 */
+const sortDirection = usePersistedSort('sort:bid-inviter:bid-handler-info:id')
+
+function toggleSort() {
+  sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+  void load(1)
+}
+
 const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidHandlerInfo>({
   fetchPage: listBidHandlers,
-  sort: 'bid_handler_id desc',
+  sort: () => `bid_handler_id ${sortDirection.value}`,
   onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
@@ -27,6 +40,11 @@ const detailRow = ref<BidHandlerInfo | null>(null)
 function openDetail(row: BidHandlerInfo) {
   detailRow.value = row
   detailVisible.value = true
+}
+
+// ——— 新建经办人:从列表底部进入创建页 ———
+function goCreate() {
+  router.push('/bid-inviter/bid-handler-info/create')
 }
 
 function detailFields(row: BidHandlerInfo): DetailField[] {
@@ -61,7 +79,21 @@ onMounted(() => {
         <el-empty description="暂无经办人数据" />
       </template>
 
-      <el-table-column prop="bidHandlerId" label="ID" width="80" />
+      <el-table-column prop="bidHandlerId" width="80">
+        <template #header>
+          <div class="column-header">
+            ID
+            <el-button
+              class="sort-toggle"
+              text
+              size="small"
+              :icon="sortDirection === 'desc' ? CaretBottom : CaretTop"
+              :title="sortDirection === 'desc' ? '当前倒序，点击切换正序' : '当前正序，点击切换倒序'"
+              @click.stop="toggleSort"
+            />
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="handlerName" label="经办人姓名" min-width="120" show-overflow-tooltip />
       <el-table-column prop="companyName" label="所属公司" min-width="180" show-overflow-tooltip />
       <el-table-column prop="departmentName" label="所属部门" min-width="160" show-overflow-tooltip />
@@ -85,6 +117,12 @@ onMounted(() => {
       />
     </div>
 
+    <div class="list-bottom-actions">
+      <el-button type="primary" :icon="Plus" @click="goCreate">
+        新建经办人
+      </el-button>
+    </div>
+
     <!-- 行详情弹窗 -->
     <DetailDialog
         v-model="detailVisible"
@@ -93,3 +131,11 @@ onMounted(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.list-bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+</style>

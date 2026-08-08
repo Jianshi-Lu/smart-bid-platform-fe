@@ -24,7 +24,7 @@ const emit = defineEmits<{
         top="0"
         @update:model-value="emit('update:modelValue', $event)"
     >
-        <el-descriptions :column="1" border>
+        <el-descriptions class="detail-dialog-descriptions" :column="1" border>
             <el-descriptions-item
                 v-for="field in fields"
                 :key="field.label"
@@ -35,3 +35,23 @@ const emit = defineEmits<{
         </el-descriptions>
     </el-dialog>
 </template>
+
+<style>
+/*
+ * 详情弹窗固定两列布局：长路径、UUID、SHA-256 等不可断行内容强制换行，
+ * 避免表格撑出弹窗卡片边框。
+ */
+.detail-dialog-descriptions .el-descriptions__table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.detail-dialog-descriptions .el-descriptions__cell {
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+.detail-dialog-descriptions .el-descriptions__label {
+    width: 140px;
+}
+</style>

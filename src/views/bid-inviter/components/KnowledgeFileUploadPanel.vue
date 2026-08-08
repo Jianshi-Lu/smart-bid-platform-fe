@@ -1,30 +1,76 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Document, DocumentAdd } from '@element-plus/icons-vue'
-import CloudUploadIcon from '@/shared/components/icons/CloudUploadIcon.vue'
-import { uploadKnowledgeFiles } from '@/api/knowledge-file'
-import { getErrorMessage } from '@/shared/utils/error'
-import type { KnowledgeFileDocument } from '@/types/knowledge-file'
+/**
+ * 招标方知识文件入库面板。
+ *
+ * 选择/批量上传/移除、乐观占位、列表、详情、重试、删除等通用能力
+ * 已抽离至 {@link FileLibraryPanel}，本文件只做知识文件适配：
+ * 知识文件 API、招标方登录鉴权、转换/向量化状态列与详情字段。
+ */
+import FileLibraryPanel, {
+    type StatusColumn,
+    type UploadOutcome,
+} from '@/shared/components/FileLibraryPanel.vue'
+import type { DetailField } from '@/shared/components/DetailDialog.vue'
+import {
+    deleteKnowledgeFile,
+    downloadKnowledgeFile,
+    listKnowledgeFiles,
+    retryKnowledgeFile,
+    subscribeKnowledgeFileEvents,
+    uploadKnowledgeFiles,
+} from '@/api/knowledge-file'
+import { useBidInviterAuth } from '@/composables/useBidInviterAuth'
+import {
+    KNOWLEDGE_CONVERT_STATUS_DESC,
+    KNOWLEDGE_INDEX_STATUS_DESC,
+    ORIGINAL_STORAGE_STATUS_DESC,
+    enumLabel,
+} from '@/shared/utils/dict'
+import {
+    KNOWLEDGE_CONVERT_STATUS_TYPE,
+    KNOWLEDGE_INDEX_STATUS_TYPE,
+    ORIGINAL_STORAGE_STATUS_TYPE,
+} from '@/shared/utils/el-tag'
+import { displayOrDash, formatTime } from '@/shared/utils/format'
+import type { KnowledgeFileRecord } from '@/types/knowledge-file'
+import {
+    markdownDownloadFilename,
+    type DownloadedFile,
+    type FileDownloadKind,
+} from '@/shared/utils/download'
 
-const fileInput = ref<HTMLInputElement | null>(null)
-const selectedFiles = ref<File[]>([])
-const uploadedDocuments = ref<KnowledgeFileDocument[]>([])
-const uploading = ref(false)
+const { account } = useBidInviterAuth()
 
-const canUpload = computed(
-    () => selectedFiles.value.length > 0 && !uploading.value,
-)
-
-function selectFiles(event: Event) {
-    const input = event.target as HTMLInputElement
-    selectedFiles.value = Array.from(input.files ?? [])
-    uploadedDocuments.value = []
+function getUsername(): string | null {
+    return account.value?.username ?? null
 }
 
-function openFilePicker() {
-    if (!uploading.value) fileInput.value?.click()
-}
+const statusColumns: StatusColumn<KnowledgeFileRecord>[] = [
+    {
+        label: '原文件状态',
+        width: 120,
+        value: (row) => row.originalStorageStatus,
+        dict: 'originalStorageStatus',
+        typeMap: ORIGINAL_STORAGE_STATUS_TYPE,
+        descMap: ORIGINAL_STORAGE_STATUS_DESC,
+    },
+    {
+        label: '转换状态',
+        width: 110,
+        value: (row) => row.convertStatus,
+        dict: 'knowledgeConvertStatus',
+        typeMap: KNOWLEDGE_CONVERT_STATUS_TYPE,
+        descMap: KNOWLEDGE_CONVERT_STATUS_DESC,
+    },
+    {
+        label: '向量化状态',
+        width: 110,
+        value: (row) => row.indexStatus,
+        dict: 'knowledgeIndexStatus',
+        typeMap: KNOWLEDGE_INDEX_STATUS_TYPE,
+        descMap: KNOWLEDGE_INDEX_STATUS_DESC,
+    },
+]
 
 function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`
@@ -32,265 +78,151 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-async function upload() {
-    if (!canUpload.value) return
+function detailFields(row: KnowledgeFileRecord): DetailField[] {
+    return [
+        { label: '文档编号', value: row.documentUuid },
+        { label: '文件名称', value: row.originalFilename },
+        { label: '文件类型', value: displayOrDash(row.contentType) },
+        { label: '文件大小', value: formatFileSize(row.fileSize) },
+        { label: '存储介质', value: enumLabel('storageType', row.storageType) },
+        { label: '原文件状态', value: enumLabel('originalStorageStatus', row.originalStorageStatus) },
+        { label: '原始文件路径', value: displayOrDash(row.originalFilePath) },
+        { label: 'Markdown 路径', value: displayOrDash(row.markdownFilePath) },
+        { label: '原始文件 SHA-256', value: displayOrDash(row.originalSha256) },
+        { label: 'Markdown SHA-256', value: displayOrDash(row.convertedSha256) },
+        { label: '转换状态', value: enumLabel('knowledgeConvertStatus', row.convertStatus) },
+        { label: '向量化状态', value: enumLabel('knowledgeIndexStatus', row.indexStatus) },
+        { label: '内容片段数', value: row.chunkCount ?? '-' },
+        { label: '失败阶段', value: enumLabel('knowledgeErrorStage', row.errorStage) },
+        { label: '失败原因', value: displayOrDash(row.errorMessage) },
+        { label: '创建时间', value: formatTime(row.createdAt) },
+        { label: '转换完成时间', value: formatTime(row.convertedAt) },
+        { label: '入库完成时间', value: formatTime(row.indexedAt) },
+    ]
+}
 
-    uploading.value = true
-    try {
-        const response = await uploadKnowledgeFiles(selectedFiles.value)
-        uploadedDocuments.value = response.documents
-        selectedFiles.value = []
-        if (fileInput.value) fileInput.value.value = ''
-        ElMessage.success(`已成功入库 ${response.documents.length} 个知识文件`)
-    } catch (error) {
-        ElMessage.error(getErrorMessage(error))
-    } finally {
-        uploading.value = false
+function buildPendingRow(file: File): KnowledgeFileRecord {
+    return {
+        knowledgeFileId: -1,
+        documentUuid: `pending-${file.name}:${file.size}:${file.lastModified}`,
+        originalFilename: file.name,
+        contentType: file.type || null,
+        fileSize: file.size,
+        originalSha256: null,
+        convertedSha256: null,
+        storageType: 'MINIO',
+        originalFilePath: '',
+        originalStorageStatus: 'STORING',
+        markdownFilePath: null,
+        convertStatus: 'UPLOADED',
+        indexStatus: 'PENDING',
+        chunkCount: null,
+        errorMessage: null,
+        errorStage: null,
+        createdAt: new Date().toISOString(),
+        convertedAt: null,
+        indexedAt: null,
+        deletedAt: null,
+        deletionStatus: null,
+        deletionFailedStage: null,
+        deletionErrorMessage: null,
+        deletionStartedAt: null,
     }
+}
+
+function isPendingRow(row: KnowledgeFileRecord): boolean {
+    return row.documentUuid.startsWith('pending-')
+}
+
+function isInProgress(row: KnowledgeFileRecord): boolean {
+    return row.originalStorageStatus === 'STORING'
+        || row.convertStatus === 'UPLOADED'
+        || row.convertStatus === 'CONVERTING'
+        || row.indexStatus === 'PENDING'
+        || row.indexStatus === 'VECTORIZING'
+}
+
+function isRetryable(row: KnowledgeFileRecord): boolean {
+    return row.convertStatus === 'FAILED' || row.indexStatus === 'FAILED'
+}
+
+function isDownloadable(
+    row: KnowledgeFileRecord,
+    kind: FileDownloadKind,
+): boolean {
+    if (isPendingRow(row)) return false
+    if (kind === 'original') {
+        return row.originalStorageStatus === 'STORED'
+            && Boolean(row.originalFilePath && row.originalSha256)
+    }
+    return row.convertStatus === 'CONVERTED'
+        && Boolean(row.markdownFilePath && row.convertedSha256)
+}
+
+async function downloadFile(
+    row: KnowledgeFileRecord,
+    kind: FileDownloadKind,
+): Promise<DownloadedFile> {
+    const blob = await downloadKnowledgeFile(row.documentUuid, kind)
+    return {
+        blob,
+        filename: kind === 'original'
+            ? row.originalFilename
+            : markdownDownloadFilename(row.originalFilename),
+    }
+}
+
+async function uploadFiles(
+    files: File[],
+    username: string,
+): Promise<UploadOutcome> {
+    const response = await uploadKnowledgeFiles(files, username)
+    const failedNames = response.documents
+        .filter(
+            (item) =>
+                item.convertStatus === 'FAILED'
+                || item.indexStatus === 'FAILED',
+        )
+        .map((item) => item.originalFilename)
+    return { failedNames }
 }
 </script>
 
 <template>
-    <el-card class="knowledge-file-panel" shadow="never">
-        <div class="panel-heading">
-            <div class="heading-title">
-                <span class="heading-icon">
-                    <el-icon><DocumentAdd /></el-icon>
-                </span>
-                <h2>知识文件入库</h2>
-            </div>
-            <p>上传文档后即可用于智能问答知识库</p>
-        </div>
-
-        <div
-            class="dropzone"
-            :class="{ 'is-disabled': uploading }"
-            role="button"
-            tabindex="0"
-            @click="openFilePicker"
-            @keydown.enter="openFilePicker"
-        >
-            <el-icon class="dropzone-icon"><CloudUploadIcon /></el-icon>
-            <div class="dropzone-text">
-                <span class="dropzone-title">点击选择知识文件</span>
-                <span class="dropzone-hint">支持多个文件；选择后点击上传</span>
-            </div>
-            <input
-                ref="fileInput"
-                type="file"
-                multiple
-                class="hidden-input"
-                :disabled="uploading"
-                @change="selectFiles"
-            />
-            <el-button
-                type="primary"
-                :icon="CloudUploadIcon"
-                :loading="uploading"
-                :disabled="!canUpload"
-                @click.stop="upload"
-            >
-                {{ uploading ? '处理中...' : '上传文件' }}
-            </el-button>
-        </div>
-
-        <ul v-if="selectedFiles.length" class="file-list">
-            <li v-for="(file, index) in selectedFiles" :key="`${file.name}-${index}`">
-                <el-icon class="file-icon"><Document /></el-icon>
-                <span class="file-name">{{ file.name }}</span>
-                <span class="file-size">{{ formatFileSize(file.size) }}</span>
-            </li>
-        </ul>
-
-        <div v-if="uploadedDocuments.length" class="result-block">
-            <div class="result-title">入库结果</div>
-            <el-table
-                class="result-table"
-                :data="uploadedDocuments"
-                size="small"
-            >
-                <el-table-column prop="originalFilename" label="文件" min-width="180" />
-                <el-table-column prop="documentUuid" label="文档编号" min-width="300" />
-                <el-table-column prop="chunkCount" label="内容片段数" width="100" />
-            </el-table>
-        </div>
-    </el-card>
+    <div class="knowledge-file-panel">
+        <FileLibraryPanel
+            title="知识文件入库"
+            description="上传文档后即可用于智能问答知识库"
+            :list-api="(page, pageSize) => listKnowledgeFiles({ page, pageSize })"
+            :upload-api="uploadFiles"
+            :delete-api="(row) => deleteKnowledgeFile(row.documentUuid)"
+            :retry-api="(row) => retryKnowledgeFile(row.documentUuid)"
+            :retryable-checker="isRetryable"
+            :get-username="getUsername"
+            :row-key="(row) => row.documentUuid"
+            :build-pending-row="buildPendingRow"
+            :is-pending-row="isPendingRow"
+            :detail-fields="detailFields"
+            :status-columns="statusColumns"
+            :in-progress-checker="isInProgress"
+            :subscribe-updates="subscribeKnowledgeFileEvents"
+            :download-api="downloadFile"
+            :downloadable-checker="isDownloadable"
+            :extra-column="{
+                label: '内容片段数',
+                width: 100,
+                value: (row) => row.chunkCount,
+            }"
+            dropzone-title="点击选择知识文件"
+            dropzone-hint="支持多个文件；选择后点击统一上传"
+            :confirm-delete-text="() => '确定删除该知识文件吗？删除后无法恢复。'"
+            empty-text="还没有入库的知识文件"
+        />
+    </div>
 </template>
 
 <style scoped>
 .knowledge-file-panel {
-    max-width: 1200px;
-    margin: 20px auto 0;
-    border: 1px solid var(--lc-border);
-    border-radius: var(--lc-radius-lg);
-    background: var(--lc-surface);
-    box-shadow: var(--lc-shadow-sm);
-}
-
-.knowledge-file-panel :deep(.el-card__body) {
-    padding: 24px;
-}
-
-.panel-heading {
-    margin-bottom: 18px;
-}
-
-.heading-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.heading-title h2 {
-    margin: 0;
-    color: var(--lc-text);
-    font-size: 19px;
-    font-weight: 650;
-}
-
-.heading-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: var(--lc-accent-soft);
-    color: var(--lc-accent);
-    font-size: 18px;
-}
-
-.panel-heading p {
-    margin: 8px 0 0 44px;
-    color: var(--lc-text-secondary);
-    font-size: 13px;
-}
-
-.dropzone {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 20px;
-    border: 1px dashed var(--lc-border-strong);
-    border-radius: var(--lc-radius-md);
-    background: var(--lc-surface-muted);
-    cursor: pointer;
-    transition:
-        border-color 0.2s ease,
-        background-color 0.2s ease;
-}
-
-.dropzone:hover {
-    border-color: var(--lc-accent);
-    background: var(--lc-accent-soft);
-}
-
-.dropzone.is-disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.dropzone-icon {
-    color: var(--lc-accent);
-    font-size: 28px;
-    flex-shrink: 0;
-}
-
-.dropzone-text {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-    min-width: 0;
-}
-
-.dropzone-title {
-    color: var(--lc-text);
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.dropzone-hint {
-    color: var(--lc-text-secondary);
-    font-size: 12px;
-}
-
-.hidden-input {
-    display: none;
-}
-
-.file-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 16px 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.file-list li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border: 1px solid var(--lc-border);
-    border-radius: var(--lc-radius-sm);
-    background: var(--lc-surface);
-}
-
-.file-icon {
-    color: var(--lc-accent);
-    font-size: 16px;
-    flex-shrink: 0;
-}
-
-.file-name {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--lc-text);
-    font-size: 13px;
-}
-
-.file-size {
-    color: var(--lc-text-muted);
-    font-size: 12px;
-    flex-shrink: 0;
-}
-
-.result-block {
-    margin-top: 18px;
-}
-
-.result-title {
-    margin-bottom: 10px;
-    color: var(--lc-text-secondary);
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.result-table {
-    border: 1px solid var(--lc-border);
-    border-radius: var(--lc-radius-md);
-    overflow: hidden;
-}
-
-.result-table :deep(.el-table__header th) {
-    background: var(--lc-surface-muted);
-    color: var(--lc-text-secondary);
-    font-weight: 600;
-}
-
-@media (max-width: 600px) {
-    .dropzone {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .dropzone .el-button {
-        align-self: flex-start;
-    }
+    margin-top: 20px;
 }
 </style>

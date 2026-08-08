@@ -29,7 +29,7 @@ async function onSubmit() {
   try {
     const entity = await createBidHandlerInfo({ ...form })
     created.value = entity
-    ElMessage.success(`创建成功 ID=${entity.bidHandlerId}`)
+    ElMessage.success('创建成功')
   } catch (e) {
     const msg = getErrorMessage(e)
     ElMessage.error(msg)
@@ -41,7 +41,11 @@ async function onSubmit() {
 
 <template>
   <div class="page">
-    <PageHeader title="创建招标经办人" back-to="/bid-inviter" back-label="返回招标方入口" />
+    <PageHeader
+        title="创建招标经办人"
+        back-to="/bid-inviter/bid-handler-info/list"
+        back-label="返回经办人列表"
+    />
 
     <el-card class="create-form-card page-card">
       <el-form :model="form" label-width="120px" @submit.prevent="onSubmit">

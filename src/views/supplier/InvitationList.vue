@@ -8,20 +8,18 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { QuestionFilled } from '@element-plus/icons-vue'
+import { CaretBottom, CaretTop, QuestionFilled } from '@element-plus/icons-vue'
 import { listInvitationForBids } from '@/api/invitation-for-bid'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
+import { usePersistedSort } from '@/shared/composables/usePersistedSort'
 import { getErrorMessage } from '@/shared/utils/error'
 import {
     BID_NOTICE_STATUS_DESC,
-    BID_NOTICE_STATUS_LABEL,
-    PLATFORM_CATEGORY_LABEL,
-    PURCHASE_METHOD_LABEL,
-    TENDER_PROCESS_LABEL,
     boolLabel,
-    dictLabel,
+    enumLabel,
+    enumOptions,
 } from '@/shared/utils/dict'
 import type { BidNoticeStatus, InvitationForBid } from '@/types/invitation-for-bid'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
@@ -29,9 +27,17 @@ import { formatTime } from '@/shared/utils/format'
 
 const router = useRouter()
 
+/** ID 列排序方向：desc 倒序（默认）/ asc 正序。 */
+const sortDirection = usePersistedSort('sort:supplier:invitation:id')
+
+function toggleSort() {
+  sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+  void load(1)
+}
+
 const { rows, total, currentPage, pageSize, loading, load } = usePagedList<InvitationForBid>({
   fetchPage: listInvitationForBids,
-  sort: 'invitation_id desc',
+  sort: () => `invitation_id ${sortDirection.value}`,
   onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
@@ -39,7 +45,7 @@ const { rows, total, currentPage, pageSize, loading, load } = usePagedList<Invit
 const detailVisible = ref(false)
 const detailRow = ref<InvitationForBid | null>(null)
 const statusLegend: Array<[BidNoticeStatus, string]> =
-    Object.entries(BID_NOTICE_STATUS_LABEL) as Array<[BidNoticeStatus, string]>
+    enumOptions('bidNoticeStatus') as Array<[BidNoticeStatus, string]>
 
 function openDetail(row: InvitationForBid) {
   detailRow.value = row
@@ -51,9 +57,10 @@ function detailFields(row: InvitationForBid): DetailField[] {
     { label: '公告 ID', value: row.invitationId },
     { label: '项目编号', value: row.projectNo },
     { label: '采购任务编号', value: row.purchaseTaskNo },
-    { label: '平台类别', value: dictLabel(PLATFORM_CATEGORY_LABEL, row.platformCategory) },
-    { label: '采购方式', value: dictLabel(PURCHASE_METHOD_LABEL, row.purchaseMethod) },
-    { label: '招标流程', value: dictLabel(TENDER_PROCESS_LABEL, row.tenderProcess) },
+    { label: '平台类别', value: enumLabel('platformCategory', row.platformCategory) },
+    { label: '采购方式', value: enumLabel('purchaseMethod', row.purchaseMethod) },
+    { label: '招标流程', value: enumLabel('tenderProcess', row.tenderProcess) },
+    { label: '招标方式', value: enumLabel('tenderMethod', row.tenderMethod) },
     { label: '是否固定价格', value: boolLabel(row.isFixedPrice) },
     { label: '是否收取文件费', value: boolLabel(row.hasDocumentFee) },
     { label: '保证金', value: row.deposit },
@@ -64,7 +71,7 @@ function detailFields(row: InvitationForBid): DetailField[] {
     { label: '采购公司', value: row.purchaseCompany },
     { label: '采购部门', value: row.purchaseDepartment },
     { label: '招标主体', value: row.tenderingParty },
-    { label: '状态', value: row.status ? (BID_NOTICE_STATUS_LABEL[row.status] ?? row.status) : '-' },
+    { label: '状态', value: enumLabel('bidNoticeStatus', row.status) },
     { label: '备注', value: row.notes },
     { label: '创建时间', value: formatTime(row.createdAt) },
   ]
@@ -85,7 +92,7 @@ function onBid(row: InvitationForBid) {
 
 <template>
   <div class="page">
-    <PageHeader title="投标项目列表" back-to="/supplier" back-label="返回投标方入口" />
+    <PageHeader title="项目列表" back-to="/supplier" back-label="返回投标方入口" />
 
     <!--声明整张表的数据来源-->
     <el-table
@@ -102,7 +109,21 @@ function onBid(row: InvitationForBid) {
       </template>
 
       <!--声明每一列从行数据里取哪个字段-->
-      <el-table-column prop="invitationId" label="ID" width="80" />
+      <el-table-column prop="invitationId" width="80">
+        <template #header>
+          <div class="column-header">
+            ID
+            <el-button
+              class="sort-toggle"
+              text
+              size="small"
+              :icon="sortDirection === 'desc' ? CaretBottom : CaretTop"
+              :title="sortDirection === 'desc' ? '当前倒序，点击切换正序' : '当前正序，点击切换倒序'"
+              @click.stop="toggleSort"
+            />
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="projectNo" label="项目编号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="purchaseTaskNo" label="采购任务编号" min-width="140" show-overflow-tooltip />
 
@@ -136,7 +157,7 @@ function onBid(row: InvitationForBid) {
         </template>
         <template #default="{ row }: { row: InvitationForBid }">
           <el-tag v-if="row.status" :type="BID_NOTICE_STATUS_TYPE[row.status] ?? 'info'" disable-transitions>
-            {{ BID_NOTICE_STATUS_LABEL[row.status] ?? row.status }}
+            {{ enumLabel('bidNoticeStatus', row.status) }}
           </el-tag>
           <span v-else>-</span>
         </template>

@@ -5,6 +5,24 @@
  * 不再使用旧版 uploadBatchId 追加上传语义。
  */
 import { http } from '@/api/http'
+import { subscribeToSse } from '@/api/sse'
+import type { FileDownloadKind } from '@/shared/utils/download'
+import type { Result } from '@/types/common'
+import type { CredentialFile } from '@/types/credential-file'
+
+/**
+ * GET /bidder/bid-records/{bidRecordId}/credential-files
+ * 查询投标记录下全部未删除资信文件（含转换状态），已删除文件后端不可见。
+ */
+export function listCredentialFiles(
+    bidRecordId: number
+): Promise<CredentialFile[]> {
+    return http
+        .get<Result<CredentialFile[]>>(
+            `/bidder/bid-records/${bidRecordId}/credential-files`
+        )
+        .then((resp) => resp.data.data)
+}
 
 /**
  * DELETE /bidder/bid-records/{bidRecordId}/credential-files/{fileId}
@@ -21,4 +39,31 @@ export function deleteCredentialFile(
             `/bidder/bid-records/${bidRecordId}/credential-files/${fileId}`
         )
         .then(() => undefined)
+}
+
+/** 下载投标方本人投标记录下的原始文件或 Markdown 文件。 */
+export function downloadCredentialFile(
+    bidRecordId: number,
+    fileId: number,
+    kind: FileDownloadKind,
+): Promise<Blob> {
+    return http
+        .get<Blob>(
+            `/bidder/bid-records/${bidRecordId}/credential-files/${fileId}/download/${kind}`,
+            { responseType: 'blob' },
+        )
+        .then((resp) => resp.data)
+}
+
+/** 订阅指定投标记录下资信文件的转换状态变化。 */
+export function subscribeCredentialFileEvents(
+    bidRecordId: number,
+    onUpdate: () => void,
+): () => void {
+    return subscribeToSse(
+        `/bidder/bid-records/${bidRecordId}/credential-files/events`,
+        (message) => {
+            if (message.event === 'file-status') onUpdate()
+        },
+    )
 }

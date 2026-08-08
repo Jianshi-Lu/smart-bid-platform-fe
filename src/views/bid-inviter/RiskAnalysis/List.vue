@@ -7,20 +7,29 @@
  */
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { QuestionFilled } from '@element-plus/icons-vue'
+import { CaretBottom, CaretTop, QuestionFilled } from '@element-plus/icons-vue'
 import { listRiskAnalyses } from '@/api/risk-analysis'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
+import { usePersistedSort } from '@/shared/composables/usePersistedSort'
 import { getErrorMessage } from '@/shared/utils/error'
-import { RISK_LEVEL_DESC, RISK_LEVEL_LABEL } from '@/shared/utils/dict'
+import { RISK_LEVEL_DESC, enumLabel, enumOptions } from '@/shared/utils/dict'
 import type { RiskAnalysis, RiskLevel } from '@/types/risk-analysis'
 import { RISK_LEVEL_TAG_CLASS, RISK_LEVEL_TYPE } from '@/shared/utils/el-tag'
 import { formatTime } from '@/shared/utils/format'
 
+/** ID 列排序方向：desc 倒序（默认）/ asc 正序。 */
+const sortDirection = usePersistedSort('sort:bid-inviter:risk-analysis:id')
+
+function toggleSort() {
+  sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+  void load(1)
+}
+
 const { rows, total, currentPage, pageSize, loading, load } = usePagedList<RiskAnalysis>({
   fetchPage: listRiskAnalyses,
-  sort: 'analysis_id desc',
+  sort: () => `analysis_id ${sortDirection.value}`,
   onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
 
@@ -28,7 +37,7 @@ const { rows, total, currentPage, pageSize, loading, load } = usePagedList<RiskA
 const detailVisible = ref(false)
 const detailRow = ref<RiskAnalysis | null>(null)
 const riskLegend: Array<[RiskLevel, string]> =
-    Object.entries(RISK_LEVEL_LABEL) as Array<[RiskLevel, string]>
+    enumOptions('riskLevel') as Array<[RiskLevel, string]>
 
 function openDetail(row: RiskAnalysis) {
   detailRow.value = row
@@ -40,7 +49,7 @@ function detailFields(row: RiskAnalysis): DetailField[] {
     { label: '分析 ID', value: row.analysisId },
     { label: '投标记录 ID', value: row.bidRecordId },
     { label: '投标人', value: row.bidderName },
-    { label: '风险等级', value: RISK_LEVEL_LABEL[row.riskLevel] ?? row.riskLevel },
+    { label: '风险等级', value: enumLabel('riskLevel', row.riskLevel) },
     { label: '风险摘要', value: row.summary },
     { label: '建议', value: row.suggestions },
     { label: '分析时间', value: formatTime(row.analyzedAt) },
@@ -70,7 +79,21 @@ onMounted(() => {
         <el-empty description="暂无风险分析记录" />
       </template>
       <!--声明每一列从行数据里取哪个字段-->
-      <el-table-column prop="analysisId" label="ID" width="80" />
+      <el-table-column prop="analysisId" width="80">
+        <template #header>
+          <div class="column-header">
+            ID
+            <el-button
+              class="sort-toggle"
+              text
+              size="small"
+              :icon="sortDirection === 'desc' ? CaretBottom : CaretTop"
+              :title="sortDirection === 'desc' ? '当前倒序，点击切换正序' : '当前正序，点击切换倒序'"
+              @click.stop="toggleSort"
+            />
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="bidRecordId" label="投标记录 ID" width="120" />
       <el-table-column prop="bidderName" label="投标人" min-width="160" show-overflow-tooltip />
       <el-table-column prop="riskLevel" width="120" align="center">
@@ -109,7 +132,7 @@ onMounted(() => {
             :class="RISK_LEVEL_TAG_CLASS[row.riskLevel] ?? ''"
             disable-transitions
           >
-            {{ RISK_LEVEL_LABEL[row.riskLevel] ?? row.riskLevel }}
+            {{ enumLabel('riskLevel', row.riskLevel) }}
           </el-tag>
           <span v-else>-</span>
         </template>

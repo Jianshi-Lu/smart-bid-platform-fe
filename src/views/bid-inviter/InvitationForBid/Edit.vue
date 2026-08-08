@@ -9,9 +9,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { listBidHandlers } from '@/api/bid-handler-info'
 import { getInvitationForBid, updateInvitationForBid } from '@/api/invitation-for-bid'
+import AmountInput from '@/shared/components/AmountInput.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import { getErrorMessage } from '@/shared/utils/error'
+import { enumOptions } from '@/shared/utils/dict'
+import type { BidHandlerInfo } from '@/types/bid-handler-info'
 import type { UpdateRequest } from '@/types/invitation-for-bid'
 
 const route = useRoute()
@@ -46,6 +50,30 @@ const form = reactive<UpdateRequest>({
 
 const loading = ref(false)
 const submitting = ref(false)
+const handlers = ref<BidHandlerInfo[]>([])
+const handlersLoading = ref(false)
+
+// 下拉选项只做展示映射，表单仍提交英文枚举值。
+const platformCategoryOptions = enumOptions('platformCategory')
+const tenderProcessOptions = enumOptions('tenderProcess')
+const tenderMethodOptions = enumOptions('tenderMethod')
+const purchaseMethodOptions = enumOptions('purchaseMethod')
+
+async function loadHandlers() {
+  handlersLoading.value = true
+  try {
+    const result = await listBidHandlers({
+      page: 1,
+      pageSize: 100,
+      sort: 'bid_handler_id asc',
+    })
+    handlers.value = result.list
+  } catch (e) {
+    ElMessage.error(`加载经办人列表失败: ${getErrorMessage(e, '')}`)
+  } finally {
+    handlersLoading.value = false
+  }
+}
 
 // ——— 返回列表(模板按钮 + onSubmit 成功共用) ———
 function goBack() {
@@ -54,7 +82,7 @@ function goBack() {
 
 async function loadEntity() {
   if (id.value === null) {
-    ElMessage.error('无效的公告 ID')
+    ElMessage.error('无效的招标公告')
     goBack()
     return
   }
@@ -90,21 +118,24 @@ async function loadEntity() {
   }
 }
 
-onMounted(loadEntity)
+onMounted(() => {
+  void loadEntity()
+  void loadHandlers()
+})
 
 async function onSubmit() {
   if (id.value === null) {
-    ElMessage.error('无效的公告 ID')
+    ElMessage.error('无效的招标公告')
     return
   }
   const numericId: number = id.value
   submitting.value = true
   try {
-    const diff = await updateInvitationForBid(numericId, {
+    await updateInvitationForBid(numericId, {
       ...form,
       bidHandlerId: form.bidHandlerId ?? undefined,
     })
-    ElMessage.success(`更新成功 ID=${diff.after.invitationId}`)
+    ElMessage.success('更新成功')
     goBack()
   } catch (e) {
     const msg = getErrorMessage(e)
@@ -127,8 +158,21 @@ async function onSubmit() {
       <el-form :model="form" label-width="120px">
         <el-divider content-position="left">基本信息</el-divider>
 
-        <el-form-item label="经办人 ID" required>
-          <el-input-number v-model="form.bidHandlerId" :min="1" />
+        <el-form-item label="经办人" required>
+          <el-select
+            v-model="form.bidHandlerId"
+            filterable
+            :loading="handlersLoading"
+            placeholder="请选择经办人"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="handler in handlers"
+              :key="handler.bidHandlerId"
+              :value="handler.bidHandlerId"
+              :label="`${handler.bidHandlerId} ${handler.handlerName}（${handler.companyName} / ${handler.departmentName}）`"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="项目编号" required>
           <el-input v-model="form.projectNo" maxlength="50" show-word-limit />
@@ -140,16 +184,64 @@ async function onSubmit() {
         <el-divider content-position="left">流程信息</el-divider>
 
         <el-form-item label="平台采购类别">
-          <el-input v-model="form.platformCategory" maxlength="50" />
+          <el-select
+            v-model="form.platformCategory"
+            placeholder="请选择平台采购类别"
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="[value, label] in platformCategoryOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="招标流程">
-          <el-input v-model="form.tenderProcess" maxlength="50" />
+          <el-select
+            v-model="form.tenderProcess"
+            placeholder="请选择招标流程"
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="[value, label] in tenderProcessOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="招标方式">
-          <el-input v-model="form.tenderMethod" maxlength="50" />
+          <el-select
+            v-model="form.tenderMethod"
+            placeholder="请选择招标方式"
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="[value, label] in tenderMethodOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="采购方式">
-          <el-input v-model="form.purchaseMethod" maxlength="50" />
+          <el-select
+            v-model="form.purchaseMethod"
+            placeholder="请选择采购方式"
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="[value, label] in purchaseMethodOptions"
+              :key="value"
+              :value="value"
+              :label="label"
+            />
+          </el-select>
         </el-form-item>
 
         <el-divider content-position="left">费用与规则</el-divider>
@@ -161,7 +253,7 @@ async function onSubmit() {
           <el-switch v-model="form.hasDocumentFee" />
         </el-form-item>
         <el-form-item label="保证金">
-          <el-input-number v-model="form.deposit" :min="0" :precision="2" :step="0.01" />
+          <AmountInput v-model="form.deposit" placeholder="请输入保证金金额" />
         </el-form-item>
         <el-form-item label="需要资信报告">
           <el-switch v-model="form.creditReportRequired" />

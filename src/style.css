@@ -294,6 +294,17 @@ textarea {
   color: var(--lc-accent-strong);
 }
 
+/* ID 列头排序切换按钮 */
+.sort-toggle {
+  margin-left: 2px;
+  padding: 2px;
+  color: var(--lc-text-muted);
+}
+
+.sort-toggle:hover {
+  color: var(--lc-accent);
+}
+
 .header-legend {
   display: flex;
   flex-direction: column;

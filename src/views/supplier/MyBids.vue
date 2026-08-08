@@ -8,25 +8,73 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, FolderOpened, View } from '@element-plus/icons-vue'
+import {
+    CaretBottom,
+    CaretTop,
+    Delete,
+    Edit,
+    FolderOpened,
+} from '@element-plus/icons-vue'
 import {
     deleteBidderBidRecord,
     getBidderBidRecord,
     listMyBidRecords,
     updateBidderBidRecord,
+    uploadBidderCredentialFiles,
 } from '@/api/bidder-bid-record'
+import {
+    deleteCredentialFile,
+    downloadCredentialFile,
+    listCredentialFiles,
+    subscribeCredentialFileEvents,
+} from '@/api/credential-file'
 import { useBidderAuth } from '@/composables/useBidderAuth'
+import AmountInput from '@/shared/components/AmountInput.vue'
+import FileLibraryPanel, {
+    type StatusColumn,
+    type UploadOutcome,
+} from '@/shared/components/FileLibraryPanel.vue'
+import type { DetailField } from '@/shared/components/DetailDialog.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
-import CredentialFileUpload from '@/shared/components/CredentialFileUpload.vue'
+import { usePersistedSort } from '@/shared/composables/usePersistedSort'
 import { getErrorMessage } from '@/shared/utils/error'
 import { formatTime, displayOrDash } from '@/shared/utils/format'
+import {
+    CREDENTIAL_CONVERT_STATUS_DESC,
+    ORIGINAL_STORAGE_STATUS_DESC,
+    enumLabel,
+} from '@/shared/utils/dict'
+import {
+    CREDENTIAL_CONVERT_STATUS_TYPE,
+    ORIGINAL_STORAGE_STATUS_TYPE,
+} from '@/shared/utils/el-tag'
 import type { BidRecord } from '@/types/bid-record'
+import type { CredentialFile } from '@/types/credential-file'
+import {
+    markdownDownloadFilename,
+    type DownloadedFile,
+    type FileDownloadKind,
+} from '@/shared/utils/download'
 
 const router = useRouter()
 const { account, logout } = useBidderAuth()
 
 const records = ref<BidRecord[]>([])
 const loading = ref(false)
+/** 记录 ID 列排序方向：desc 倒序（默认）/ asc 正序。 */
+const sortDirection = usePersistedSort('sort:supplier:my-bids:record-id')
+
+const sortedRecords = computed(() =>
+    [...records.value].sort((left, right) =>
+        sortDirection.value === 'desc'
+            ? right.bidRecordId - left.bidRecordId
+            : left.bidRecordId - right.bidRecordId,
+    ),
+)
+
+function toggleSort() {
+    sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+}
 
 // ——— 编辑弹窗 ———
 const editVisible = ref(false)
@@ -47,6 +95,146 @@ const accountLabel = computed(() => {
     if (!acc) return ''
     return acc.displayName || acc.username
 })
+
+function getUsername(): string | null {
+    return account.value?.username ?? null
+}
+
+// ——— 资信材料文件面板适配（复用 FileLibraryPanel） ———
+const credentialStatusColumns: StatusColumn<CredentialFile>[] = [
+    {
+        label: '原文件状态',
+        width: 120,
+        value: (row) => row.originalStorageStatus ?? 'STORED',
+        dict: 'originalStorageStatus',
+        typeMap: ORIGINAL_STORAGE_STATUS_TYPE,
+        descMap: ORIGINAL_STORAGE_STATUS_DESC,
+    },
+    {
+        label: '转换状态',
+        width: 100,
+        value: (row) => row.convertStatus,
+        dict: 'credentialConvertStatus',
+        typeMap: CREDENTIAL_CONVERT_STATUS_TYPE,
+        descMap: CREDENTIAL_CONVERT_STATUS_DESC,
+    },
+]
+
+function formatFileSize(size: number): string {
+    if (size < 1024) return `${size} B`
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+    return `${(size / 1024 / 1024).toFixed(1)} MB`
+}
+
+function credentialDetailFields(row: CredentialFile): DetailField[] {
+    return [
+        { label: '文件名称', value: row.originalFilename },
+        { label: '文件类型', value: displayOrDash(row.contentType) },
+        { label: '文件大小', value: formatFileSize(row.fileSize) },
+        { label: '存储介质', value: enumLabel('storageType', row.storageType) },
+        { label: '原文件状态', value: enumLabel('originalStorageStatus', row.originalStorageStatus) },
+        { label: '转换状态', value: enumLabel('credentialConvertStatus', row.convertStatus) },
+        { label: '失败阶段', value: enumLabel('credentialErrorStage', row.errorStage) },
+        { label: '失败原因', value: displayOrDash(row.errorMessage) },
+        { label: '创建时间', value: formatTime(row.createdAt) },
+        { label: '转换完成时间', value: formatTime(row.convertedAt) },
+    ]
+}
+
+function buildPendingCredentialRow(file: File): CredentialFile {
+    return {
+        fileId: -1,
+        fileUuid: '',
+        fileOrder: 0,
+        originalFilename: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+        originalSha256: '',
+        storageType: 'MINIO',
+        originalStorageStatus: 'STORING',
+        convertStatus: 'UPLOADED',
+        createdAt: new Date().toISOString(),
+    }
+}
+
+function isPendingCredentialRow(row: CredentialFile): boolean {
+    return row.fileId < 0
+}
+
+function isCredentialInProgress(row: CredentialFile): boolean {
+    return row.originalStorageStatus === 'STORING'
+        || row.convertStatus === 'UPLOADED'
+        || row.convertStatus === 'CONVERTING'
+}
+
+async function listCredentialRows(page: number, pageSize: number) {
+    const bidRecordId = detailRecord.value?.bidRecordId
+    if (!bidRecordId) return { list: [], total: 0 }
+    const all = await listCredentialFiles(bidRecordId)
+    const start = (page - 1) * pageSize
+    return {
+        list: all.slice(start, start + pageSize),
+        total: all.length,
+    }
+}
+
+async function uploadCredentialFiles(
+    files: File[],
+    username: string,
+): Promise<UploadOutcome> {
+    const bidRecordId = detailRecord.value?.bidRecordId
+    if (!bidRecordId) throw new Error('投标记录无效，无法上传资信材料')
+    const response = await uploadBidderCredentialFiles(
+        files,
+        bidRecordId,
+        username,
+    )
+    const failedNames = (response.files ?? [])
+        .filter((item) => item.convertStatus === 'FAILED')
+        .map((item) => item.originalFilename)
+    return { failedNames }
+}
+
+async function deleteCredentialRow(row: CredentialFile) {
+    const bidRecordId = detailRecord.value?.bidRecordId
+    if (!bidRecordId) throw new Error('投标记录无效，无法删除资信材料')
+    await deleteCredentialFile(bidRecordId, row.fileId)
+}
+
+function subscribeCredentialUpdates(onUpdate: () => void): () => void {
+    const bidRecordId = detailRecord.value?.bidRecordId
+    return bidRecordId
+        ? subscribeCredentialFileEvents(bidRecordId, onUpdate)
+        : () => undefined
+}
+
+function isCredentialDownloadable(
+    row: CredentialFile,
+    kind: FileDownloadKind,
+): boolean {
+    if (isPendingCredentialRow(row)) return false
+    if (kind === 'original') {
+        return row.originalStorageStatus === 'STORED'
+            && Boolean(row.originalFilePath && row.originalSha256)
+    }
+    return row.convertStatus === 'CONVERTED'
+        && Boolean(row.markdownFilePath && row.convertedSha256)
+}
+
+async function downloadCredentialRow(
+    row: CredentialFile,
+    kind: FileDownloadKind,
+): Promise<DownloadedFile> {
+    const bidRecordId = detailRecord.value?.bidRecordId
+    if (!bidRecordId) throw new Error('投标记录无效，无法下载资信材料')
+    const blob = await downloadCredentialFile(bidRecordId, row.fileId, kind)
+    return {
+        blob,
+        filename: kind === 'original'
+            ? row.originalFilename
+            : markdownDownloadFilename(row.originalFilename),
+    }
+}
 
 async function loadRecords() {
     loading.value = true
@@ -75,7 +263,7 @@ function openEdit(record: BidRecord) {
 
 async function saveEdit() {
     if (editingId.value === null || editSaving.value) return
-    if (!editForm.bidderName.trim() || editForm.quotePrice === undefined) {
+    if (!editForm.bidderName.trim() || editForm.quotePrice == null) {
         ElMessage.warning('投标人名称和报价不能为空')
         return
     }
@@ -103,6 +291,12 @@ async function openDetail(record: BidRecord) {
     } catch (error) {
         ElMessage.error(`加载详情失败: ${getErrorMessage(error, '')}`)
     }
+}
+
+function openEditFromDetail() {
+    if (!detailRecord.value) return
+    detailVisible.value = false
+    openEdit(detailRecord.value)
 }
 
 async function remove(record: BidRecord) {
@@ -143,11 +337,27 @@ onMounted(loadRecords)
     <el-card class="page-card" shadow="never">
       <el-table
         v-loading="loading"
-        :data="records"
-        empty-text="还没有投标记录，去投标项目列表投标吧"
+        :data="sortedRecords"
+        empty-text="还没有投标记录，去项目列表投标吧"
         stripe
+        class="clickable-table"
+        @row-click="openDetail"
       >
-        <el-table-column prop="bidRecordId" label="记录 ID" width="90" />
+        <el-table-column prop="bidRecordId" width="90">
+          <template #header>
+            <div class="column-header">
+              记录 ID
+              <el-button
+                class="sort-toggle"
+                text
+                size="small"
+                :icon="sortDirection === 'desc' ? CaretBottom : CaretTop"
+                :title="sortDirection === 'desc' ? '当前倒序，点击切换正序' : '当前正序，点击切换倒序'"
+                @click.stop="toggleSort"
+              />
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="invitationId" label="公告 ID" width="90" />
         <el-table-column prop="bidNo" label="投标次序" width="90" />
         <el-table-column prop="bidderName" label="投标人名称" min-width="160" />
@@ -161,15 +371,9 @@ onMounted(loadRecords)
             {{ formatTime(row.bidAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" :icon="View" @click="openDetail(row)">
-              详情
-            </el-button>
-            <el-button link type="primary" :icon="Edit" @click="openEdit(row)">
-              修改
-            </el-button>
-            <el-button link type="danger" :icon="Delete" @click="remove(row)">
+            <el-button link type="danger" :icon="Delete" @click.stop="remove(row)">
               删除
             </el-button>
           </template>
@@ -189,13 +393,9 @@ onMounted(loadRecords)
           <el-input v-model="editForm.bidderName" maxlength="100" />
         </el-form-item>
         <el-form-item label="报价" required>
-          <el-input-number
+          <AmountInput
             v-model="editForm.quotePrice"
-            :min="0"
-            :precision="2"
-            :step="1000"
-            controls-position="right"
-            style="width: 100%"
+            placeholder="请输入报价"
           />
         </el-form-item>
         <el-form-item label="联系方式" required>
@@ -214,7 +414,8 @@ onMounted(loadRecords)
     <el-dialog
       v-model="detailVisible"
       :title="`投标详情（记录 ${detailRecord?.bidRecordId ?? ''}）`"
-      width="640px"
+      width="860px"
+      top="0"
       destroy-on-close
     >
       <el-descriptions v-if="detailRecord" :column="2" border>
@@ -237,15 +438,42 @@ onMounted(loadRecords)
 
       <div v-if="detailRecord" class="credential-section">
         <div class="credential-title">
-          <el-icon><FolderOpened /></el-icon>
+          <span class="credential-title-icon">
+            <el-icon><FolderOpened /></el-icon>
+          </span>
           资信材料
         </div>
-        <CredentialFileUpload
-          :bid-record-id="detailRecord.bidRecordId"
-          bidder-mode
+        <FileLibraryPanel
+          title="资信材料"
+          description=""
+          embedded
           accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.html"
+          :list-api="listCredentialRows"
+          :upload-api="uploadCredentialFiles"
+          :delete-api="deleteCredentialRow"
+          :get-username="getUsername"
+          :row-key="(row) => String(row.fileId)"
+          :build-pending-row="buildPendingCredentialRow"
+          :is-pending-row="isPendingCredentialRow"
+          :detail-fields="credentialDetailFields"
+          :status-columns="credentialStatusColumns"
+          :in-progress-checker="isCredentialInProgress"
+          :subscribe-updates="subscribeCredentialUpdates"
+          :download-api="downloadCredentialRow"
+          :downloadable-checker="isCredentialDownloadable"
+          dropzone-title="点击选择资信材料"
+          dropzone-hint="支持多个文件；选择后点击统一上传"
+          :confirm-delete-text="() => '确定删除该资信文件吗？删除后无法恢复。'"
+          empty-text="还没有上传的资信材料"
         />
       </div>
+
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button type="primary" :icon="Edit" @click="openEditFromDetail">
+          修改
+        </el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -257,17 +485,31 @@ onMounted(loadRecords)
   font-size: 13px;
 }
 .credential-section {
-  margin-top: 20px;
-  padding-top: 16px;
+  margin-top: 22px;
+  padding-top: 18px;
   border-top: 1px solid var(--lc-border);
 }
+
 .credential-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 14px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--lc-text);
+}
+
+.credential-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--lc-accent-soft);
+  color: var(--lc-accent);
+  font-size: 16px;
+  flex-shrink: 0;
 }
 </style>

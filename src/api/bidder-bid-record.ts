@@ -63,10 +63,12 @@ export function deleteBidderBidRecord(id: number): Promise<void> {
  */
 export function uploadBidderCredentialFiles(
     files: File[],
-    bidRecordId: number
+    bidRecordId: number,
+    username: string,
 ): Promise<CredentialFileUploadResponse> {
     const formData = new FormData()
     files.forEach((file) => formData.append('files', file))
+    formData.append('username', username)
     return http
         .post<Result<CredentialFileUploadResponse>>(
             `/bidder/bid-records/${bidRecordId}/credential-files`,

@@ -49,7 +49,7 @@ const router = useRouter()
 
 const entries: HomeEntry[] = [
     {
-        title: '投标项目列表',
+        title: '项目列表',
         description: '浏览招标公告并参与投标',
         path: '/supplier/invitation/list',
         icon: Document,
@@ -75,11 +75,6 @@ function go(path: string) {
                 <h1>投标方入口</h1>
                 <p class="subtitle">请选择操作:</p>
             </div>
-            <div class="home-actions">
-                <el-button type="primary" @click="go('/supplier/my-bids')">
-                    我的投标
-                </el-button>
-            </div>
         </div>
 
         <el-row :gutter="20">
@@ -94,11 +89,13 @@ function go(path: string) {
                 <el-card class="home-card" shadow="hover" @click="go(entry.path)">
                     <div class="card-header">
                         <span class="card-icon-chip">
-                            <el-icon :size="18"><component :is="entry.icon" /></el-icon>
+                            <el-icon :size="20"><component :is="entry.icon" /></el-icon>
                         </span>
-                        <h3>{{ entry.title }}</h3>
+                        <div class="card-text">
+                            <h3>{{ entry.title }}</h3>
+                            <p class="description">{{ entry.description }}</p>
+                        </div>
                     </div>
-                    <p class="description">{{ entry.description }}</p>
                 </el-card>
             </el-col>
         </el-row>
@@ -118,11 +115,6 @@ function go(path: string) {
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
-}
-.home-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 .home h1 {
     margin: 0 0 8px;
@@ -153,14 +145,19 @@ function go(path: string) {
 }
 .home-card :deep(.el-card__body) {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    padding: 24px;
+    padding: 14px 18px;
 }
 .card-header {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+.card-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 .card-icon-chip {
     display: inline-flex;
@@ -175,7 +172,7 @@ function go(path: string) {
 }
 .card-header h3 {
     margin: 0;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 650;
     color: var(--lc-text);
 }
@@ -183,8 +180,8 @@ function go(path: string) {
     color: var(--lc-text-secondary);
     font-size: 13px;
     line-height: 1.5;
-    margin: 8px 0 0;
-    text-align: center;
+    margin: 2px 0 0;
+    text-align: left;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;

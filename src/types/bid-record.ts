@@ -22,7 +22,7 @@
  *   export type ListRequest = PageRequest
  *
  * 关系:
- *   - AddRequest   是 createBidRecord 的入参体
+ *   - AddRequest   是投标方 createBidderBidRecord 的入参体
  *   - ListRequest  是 listBidRecords 的 query 参数
  *   - BidRecord    是 BE 返回的实体 (含 BE 自动算的 bidNo/bidAt)
  *

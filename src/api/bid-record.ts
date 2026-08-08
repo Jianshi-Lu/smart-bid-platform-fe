@@ -8,13 +8,11 @@
  *   - 下游(依赖): api/http.ts (http 实例 + ApiError + 拦截器)
  *
  * 数据承接载体(view ↔ api ↔ http ↔ BE):
- *   - createBidRecord: AddRequest (4 必填 + 1 可选) → BidRecord 实体(含 BE 自动算的 bidNo/bidAt)
  *   - getBidRecord:    number (bidRecordId) → BidRecord
  *   - listBidRecords:  ListRequest (page/pageSize/sort) → PageResult<BidRecord>
  *   - analyzeRisk:     number (bidRecordId) → RiskAnalysis 实体(类型见 risk-analysis 模块)
  *
  * 对应后端调用入口(BidRecordController.java):
- *   - POST /bid-record/add                  → addBidRecord
  *   - GET  /bid-record/{id}                 → getBidRecord
  *   - GET  /bid-record?page=&pageSize=&sort= → listBidRecord (PageHelper 分页)
  *   - POST /bid-record/analyze-risk/{id}    → analyzeRisk (同步 DeepSeek,落库 risk_analysis)
@@ -25,42 +23,26 @@
  * 错误处理: 拦截器统一包装 ApiError,调用方通过 getErrorMessage 展示异常。
  *
  * ─── Class hierarchy ───
- *   export function createBidRecord(data: AddRequest): Promise<BidRecord>
  *   export function getBidRecord(id: number): Promise<BidRecord>
  *   export function listBidRecords(query: ListRequest): Promise<PageResult<BidRecord>>
  *   export function analyzeRisk(id: number): Promise<RiskAnalysis>            // 跨模块: 副作用落库 risk_analysis
  *
- * 关系:4 个函数一对一映射 BE BidRecordController 的 4 个端点:
- *   createBidRecord  ↔ POST /bid-record/add
+ * 关系:3 个函数一对一映射 BE BidRecordController 的端点:
  *   getBidRecord     ↔ GET  /bid-record/{id}
  *   listBidRecords   ↔ GET  /bid-record
  *   analyzeRisk      ↔ POST /bid-record/analyze-risk/{id}     (BE 同步 DeepSeek → 落库 risk_analysis)
  *
  * 调用方(view):
  *   - bid-inviter/BidRecord/List.vue   → listBidRecords + analyzeRisk (行内按钮)
- *   - bid-inviter/BidRecord/Create.vue → createBidRecord
- *   - supplier/BidRecordCreate.vue   → createBidRecord (跨角色)
  *   - getBidRecord 为后续资信上传页校验路由中的 bidRecordId 预留，当前尚无对应 view/route
  */
 import { http } from '@/api/http'
 
 import type { Result, PageResult } from '@/types/common'
 
-import type { AddRequest, BidRecord, ListRequest } from '@/types/bid-record'
+import type { BidRecord, ListRequest } from '@/types/bid-record'
 import type { RiskAnalysis } from '@/types/risk-analysis'
 
-
-/**
- * POST /bid-record/add 创建投标记录。
- *
- * 必填: invitationId / bidderName / quotePrice / bidderContact。
- * 注意: bidNo 与 bidAt 由 BE 自动算,客户端不传也不接收(返回 entity 时 BE 填好)。
- */
-export function createBidRecord(data: AddRequest): Promise<BidRecord> {
-    return http
-        .post<Result<BidRecord>>('/bid-record/add', data)
-        .then((resp) => resp.data.data)
-}
 
 /**
  * GET /bid-record/{id} 按 ID 查询投标记录。

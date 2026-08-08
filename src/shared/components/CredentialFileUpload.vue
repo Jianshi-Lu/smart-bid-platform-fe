@@ -12,12 +12,18 @@
  * /bidder/bid-records/{id}/credential-files（后端强制账号归属校验），
  * 每个文件独立成文件单元，不再维护批次号。
  */
-import { computed, readonly, ref } from 'vue'
+import { computed, onUnmounted, readonly, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, FolderOpened, Upload } from '@element-plus/icons-vue'
-import { deleteCredentialFile } from '@/api/credential-file'
+import {
+    deleteCredentialFile,
+    listCredentialFiles,
+    subscribeCredentialFileEvents,
+} from '@/api/credential-file'
 import { uploadBidderCredentialFiles } from '@/api/bidder-bid-record'
+import { useBidderAuth } from '@/composables/useBidderAuth'
 import { getErrorMessage } from '@/shared/utils/error'
+import { enumLabel } from '@/shared/utils/dict'
 import type { CredentialFile } from '@/types/credential-file'
 
 type PendingFileStatus = 'SELECTED' | 'UPLOADING' | 'FAILED'
@@ -53,12 +59,15 @@ const props = withDefaults(defineProps<{
     bidderMode: false,
 })
 
+const { account } = useBidderAuth()
+
 // 定义Vue的 Ref 容器,响应式状态，用来驱动页面更新。
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<PendingFile[]>([])
 const uploadedFiles = ref<UploadedFile[]>([])
 const uploading = ref(false)
 const errorMessage = ref('')
+let unsubscribeStatusEvents: (() => void) | null = null
 
 // 仅允许已落库的正整数投标记录进入上传链路。
 const hasValidBidRecordId = computed(() => {
@@ -73,6 +82,45 @@ const hasUploadedFiles = computed(() => uploadedFiles.value.length > 0)
 const hasPendingOrUploadingFiles = computed(
     () => selectedFiles.value.length > 0 || uploading.value
 )
+
+function replaceUploadedFiles(files: CredentialFile[]) {
+    uploadedFiles.value = files.map((file, index) => ({
+        key: `${file.fileId}-${file.fileOrder ?? index}`,
+        file,
+        status: 'UPLOADED' as const,
+        deleting: false,
+    }))
+}
+
+async function refreshUploadedFiles() {
+    if (!hasValidBidRecordId.value) {
+        uploadedFiles.value = []
+        return
+    }
+    try {
+        replaceUploadedFiles(await listCredentialFiles(props.bidRecordId!))
+    } catch (error) {
+        // 初始列表失败不阻塞选择/上传；接口错误仍通过上传和删除操作反馈。
+        errorMessage.value = getErrorMessage(error, '')
+    }
+}
+
+function resetStatusSubscription() {
+    unsubscribeStatusEvents?.()
+    unsubscribeStatusEvents = null
+    if (hasValidBidRecordId.value) {
+        unsubscribeStatusEvents = subscribeCredentialFileEvents(
+            props.bidRecordId!,
+            () => { void refreshUploadedFiles() },
+        )
+        void refreshUploadedFiles()
+    } else {
+        uploadedFiles.value = []
+    }
+}
+
+watch(() => props.bidRecordId, resetStatusSubscription, { immediate: true })
+onUnmounted(() => unsubscribeStatusEvents?.())
 
 // 把已经以字节表示的文件大小进行单位换算和格式化
 function formatFileSize(size: number): string {
@@ -146,9 +194,15 @@ async function uploadFiles() {
 
     // 调用上传接口
     try {
+        const username = account.value?.username
+        if (!username) {
+            ElMessage.warning('登录信息缺失，请重新登录后再上传')
+            return
+        }
         const response = await uploadBidderCredentialFiles(
             filesToUpload.map((item) => item.file),
-            bidRecordId
+            bidRecordId,
+            username,
         )
         const returnedFiles = response.files ?? []
         // 计算确认上传成功的数量：取“后端返回数量”和“本次请求数量”中的较小值，差值为上传失败文件数
@@ -178,6 +232,7 @@ async function uploadFiles() {
         } else {
             ElMessage.success(`上传成功,共 ${uploadedCount} 个文件`)
         }
+        await refreshUploadedFiles()
     } catch (error) { //整体异常处理
         const message = getErrorMessage(error, '')
         selectedFiles.value = filesToUpload.map((item) => ({
@@ -210,7 +265,7 @@ async function removeUploadedFile(item: UploadedFile) {
         || !Number.isInteger(bidRecordId)
         || bidRecordId <= 0
     ) {
-        ElMessage.warning('投标记录 ID 无效，无法删除资信文件')
+        ElMessage.warning('投标记录无效，无法删除资信文件')
         return
     }
 
@@ -382,7 +437,16 @@ defineExpose({
         </div>
         <div class="file-meta">
           <el-tag :type="item.status === 'REMOVED' ? 'warning' : 'success'" size="small">
-            {{ item.status === 'REMOVED' ? '删除中' : item.file.convertStatus }}
+            {{ item.status === 'REMOVED'
+              ? '删除中'
+              : enumLabel('credentialConvertStatus', item.file.convertStatus) }}
+          </el-tag>
+          <el-tag
+            v-if="item.status !== 'REMOVED' && item.file.originalStorageStatus"
+            type="info"
+            size="small"
+          >
+            {{ enumLabel('originalStorageStatus', item.file.originalStorageStatus) }}
           </el-tag>
           <el-button
             text
