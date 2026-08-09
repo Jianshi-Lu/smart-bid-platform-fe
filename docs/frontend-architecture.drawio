@@ -19,13 +19,13 @@
         <mxCell id="104" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="@vitejs/plugin-vue" vertex="1">
           <mxGeometry height="50" width="150" x="620" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="105" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="vite.config.ts  (6 proxy prefixes → :8080)" vertex="1">
+        <mxCell id="105" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="vite.config.ts  (10 proxy prefixes → :8080)" vertex="1">
           <mxGeometry height="50" width="200" x="870" y="50" as="geometry" />
         </mxCell>
         <mxCell id="106" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" value="tsconfig (3 files)" vertex="1">
           <mxGeometry height="36" width="150" x="20" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="107" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" value="Vitest ^4.1.10&#xa;6 shared-logic tests" vertex="1">
+        <mxCell id="107" parent="L1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" value="Vitest ^4.1.10&#xa;当前无测试文件" vertex="1">
           <mxGeometry height="40" width="180" x="220" y="116" as="geometry" />
         </mxCell>
         <mxCell id="e_l1_1" edge="1" parent="1" source="101" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="102" value="类型检查">
@@ -69,10 +69,10 @@
         <mxCell id="301" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="/  →  RoleSelector" vertex="1">
           <mxGeometry height="50" width="150" x="20" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="302" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/purchaser/*  (9 routes)" vertex="1">
+        <mxCell id="302" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/bid-inviter/*  (9 routes)" vertex="1">
           <mxGeometry height="50" width="180" x="240" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="303" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/supplier/*  (3 routes)" vertex="1">
+        <mxCell id="303" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/supplier/*  (5 routes)" vertex="1">
           <mxGeometry height="50" width="180" x="520" y="50" as="geometry" />
         </mxCell>
         <mxCell id="304" parent="L3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="/:pathMatch(.*)*  →  NotFound" vertex="1">
@@ -89,7 +89,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="L4" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="④ 视图层  Views  (14 route views)" vertex="1">
+        <mxCell id="L4" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="④ 视图层  Views  (16 route views)" vertex="1">
           <mxGeometry height="580" width="1200" x="40" y="550" as="geometry" />
         </mxCell>
         <mxCell id="L4c" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#f5f5f5;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="common/" vertex="1">
@@ -101,7 +101,7 @@
         <mxCell id="402" parent="L4c" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="NotFound.vue" vertex="1">
           <mxGeometry height="50" width="150" x="200" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="L4p" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="purchaser/  (9 routes)" vertex="1">
+        <mxCell id="L4p" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#dae8fc;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="bid-inviter/  (9 routes)" vertex="1">
           <mxGeometry height="250" width="1160" x="20" y="190" as="geometry" />
         </mxCell>
         <mxCell id="411" parent="L4p" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" value="Home.vue  (4 group cards)" vertex="1">
@@ -125,7 +125,7 @@
         <mxCell id="417" parent="L4p" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="BidRecord/List.vue&#xa;触发风险分析" vertex="1">
           <mxGeometry height="45" width="200" x="480" y="95" as="geometry" />
         </mxCell>
-        <mxCell id="418" parent="L4p" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="BidRecord/Create.vue" vertex="1">
+        <mxCell id="418" parent="L4p" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="Login.vue&#xa;招标方 Basic Auth" vertex="1">
           <mxGeometry height="36" width="200" x="720" y="100" as="geometry" />
         </mxCell>
         <mxCell id="419" parent="L4p" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="RiskAnalysis/List.vue&#xa;读取落库结果（只读）" vertex="1">
@@ -134,7 +134,7 @@
         <mxCell id="e_l4_p1" edge="1" parent="L4p" source="417" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#b85450;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;dashed=1;" target="419" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="L4s" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#e1d5e7;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="supplier/  (3 routes)" vertex="1">
+        <mxCell id="L4s" parent="L4" style="shape=swimlane;rounded=0;swimlaneFillColor=#e1d5e7;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="supplier/  (5 routes)" vertex="1">
           <mxGeometry height="110" width="1160" x="20" y="460" as="geometry" />
         </mxCell>
         <mxCell id="421" parent="L4s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" value="Home.vue  (1 卡片)" vertex="1">
@@ -146,6 +146,12 @@
         <mxCell id="423" parent="L4s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="BidRecordCreate.vue&#xa;创建成功 → ID 解锁上传" vertex="1">
           <mxGeometry height="50" width="250" x="480" y="45" as="geometry" />
         </mxCell>
+        <mxCell id="424" parent="L4s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="Login.vue&#xa;投标方 Basic Auth" vertex="1">
+          <mxGeometry height="50" width="170" x="760" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="425" parent="L4s" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" value="MyBids.vue&#xa;记录 + 资信详情" vertex="1">
+          <mxGeometry height="50" width="180" x="960" y="45" as="geometry" />
+        </mxCell>
         <mxCell id="e_l4_s1" edge="1" parent="1" source="421" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="422" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -155,7 +161,7 @@
         <mxCell id="L5" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#d5e8d4;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="⑤ API 服务层  API Services  (业务模块统一复用 http.ts)" vertex="1">
           <mxGeometry height="160" width="1200" x="40" y="1150" as="geometry" />
         </mxCell>
-        <mxCell id="501" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" value="http.ts&#xa;AxiosInstance + 2 层拦截器&#xa;re-export ApiError" vertex="1">
+        <mxCell id="501" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" value="http.ts + sse.ts&#xa;角色 Basic Auth&#xa;Result / SSE 错误边界" vertex="1">
           <mxGeometry height="50" width="170" x="20" y="50" as="geometry" />
         </mxCell>
         <mxCell id="502" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="invitation-for-bid.ts&#xa;POST add / GET list+id&#xa;PATCH id / POST status-update" vertex="1">
@@ -164,13 +170,13 @@
         <mxCell id="503" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="bid-handler-info.ts&#xa;POST add&#xa;GET list" vertex="1">
           <mxGeometry height="50" width="180" x="400" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="504" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="bid-record.ts&#xa;POST add / GET list+id&#xa;POST analyze-risk/{id}" vertex="1">
+        <mxCell id="504" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="bid-record.ts + risk-analysis.ts&#xa;GET list+id / analyze&#xa;风险结果只读列表" vertex="1">
           <mxGeometry height="50" width="180" x="590" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="505" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="risk-analysis.ts&#xa;GET list&#xa;只读" vertex="1">
+        <mxCell id="505" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="knowledge-file.ts + chat-agent.ts&#xa;上传/重试/下载/SSE&#xa;会话 CRUD + 问答" vertex="1">
           <mxGeometry height="50" width="180" x="780" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="506" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="credential-file.ts&#xa;POST upload(files + bidRecordId + batchId)&#xa;DELETE batch/files/{id}" vertex="1">
+        <mxCell id="506" parent="L5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="bidder-bid-record.ts + credential-file.ts&#xa;投标 CRUD / 资信批量上传&#xa;列表/删除/下载/SSE" vertex="1">
           <mxGeometry height="60" width="190" x="970" y="45" as="geometry" />
         </mxCell>
         <mxCell id="L6" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#fad7ac;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="⑥ API 契约层  Contract Types  (通用信封 + 业务 DTO)" vertex="1">
@@ -188,10 +194,10 @@
         <mxCell id="604" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;" value="bid-record.ts&#xa;AddRequest / BidRecord&#xa;bidNo+bidAt BE 自动填" vertex="1">
           <mxGeometry height="50" width="180" x="590" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="605" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;" value="risk-analysis.ts&#xa;RiskAnalysis / RiskLevel&#xa;由 bid-record 触发生成" vertex="1">
+        <mxCell id="605" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=12;" value="risk-analysis.ts + chat-agent.ts&#xa;风险结果 / 会话 / 消息&#xa;问答请求响应" vertex="1">
           <mxGeometry height="50" width="180" x="780" y="50" as="geometry" />
         </mxCell>
-        <mxCell id="606" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11;" value="credential-file.ts&#xa;CredentialFile[]&#xa;UploadResponse(batchId + files[])" vertex="1">
+        <mxCell id="606" parent="L6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11;" value="knowledge-file.ts + credential-file.ts&#xa;原文件/转换/向量状态&#xa;上传响应与完整列表 DTO 分离" vertex="1">
           <mxGeometry height="50" width="190" x="970" y="50" as="geometry" />
         </mxCell>
         <mxCell id="L7" parent="1" style="shape=swimlane;rounded=0;swimlaneFillColor=#f5f5f5;fillColor=none;strokeColor=#444;startSize=32;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;align=left;verticalAlign=top;" value="⑦ 共享层  Shared" vertex="1">
@@ -200,7 +206,7 @@
         <mxCell id="701" parent="L7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="components/PageHeader.vue&#xa;10 个业务页复用&#xa;统一返回语义" vertex="1">
           <mxGeometry height="60" width="150" x="20" y="45" as="geometry" />
         </mxCell>
-        <mxCell id="703" parent="L7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="CredentialFileUpload.vue&#xa;BidRecordCreate 挂载&#xa;bidRecordId 成功后解锁" vertex="1">
+        <mxCell id="703" parent="L7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="FileUploadPanel.vue&#xa;3 个上传入口复用&#xa;业务适配由 views 注入" vertex="1">
           <mxGeometry height="60" width="160" x="180" y="45" as="geometry" />
         </mxCell>
         <mxCell id="702" parent="L7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="composables/usePagedList.ts&#xa;5 个列表共用&#xa;分页 / loading / 旧响应保护" vertex="1">
@@ -209,7 +215,7 @@
         <mxCell id="L7u" parent="L7" style="shape=swimlane;rounded=0;swimlaneFillColor=#e8e8e8;fillColor=none;strokeColor=#666;startSize=24;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;align=left;verticalAlign=top;" value="errors/ + utils/" vertex="1">
           <mxGeometry height="100" width="590" x="570" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="704" parent="L7u" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" value="el-tag.ts&#xa;公告状态 / 风险等级&#xa;→ el-tag color" vertex="1">
+        <mxCell id="704" parent="L7u" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" value="dict.ts + el-tag.ts&#xa;业务枚举中文说明&#xa;状态 → el-tag color" vertex="1">
           <mxGeometry height="60" width="180" x="10" y="30" as="geometry" />
         </mxCell>
         <mxCell id="705" parent="L7u" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" value="format.ts&#xa;time / price&#xa;display / yesNo" vertex="1">
@@ -227,16 +233,16 @@
         <mxCell id="802" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="MySQL" vertex="1">
           <mxGeometry height="50" width="150" x="20" y="85" as="geometry" />
         </mxCell>
-        <mxCell id="803" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="Spring AI ChatClient" vertex="1">
+        <mxCell id="803" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="to-markdown / chat-agent&#xa;/ OpenAI 兼容模型" vertex="1">
           <mxGeometry height="50" width="180" x="920" y="85" as="geometry" />
         </mxCell>
-        <mxCell id="804" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="FileUploadController / FileConvertController&#xa;upload / convert / delete&#xa;bidRecordId 已接入" vertex="1">
+        <mxCell id="804" parent="L8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="Java Controllers + Basic Auth&#xa;文件 / 投标 / 会话 / 风险代理&#xa;数据库为状态事实源" vertex="1">
           <mxGeometry height="40" width="280" x="250" y="35" as="geometry" />
         </mxCell>
         <mxCell id="e_l8_1" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="802" value="JDBC">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_l8_2" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="803" value="ChatClient.call()">
+        <mxCell id="e_l8_2" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="803" value="HTTP / model client">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e_l8_3" edge="1" parent="1" source="801" style="endArrow=classic;html=1;rounded=1;orthogonalEdgeStyle=1;strokeColor=#444;fontSize=11;align=center;verticalAlign=middle;labelBackgroundColor=#ffffff;" target="804" value="controller">

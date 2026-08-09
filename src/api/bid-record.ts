@@ -12,10 +12,10 @@
  *   - listBidRecords:  ListRequest (page/pageSize/sort) → PageResult<BidRecord>
  *   - analyzeRisk:     number (bidRecordId) → RiskAnalysis 实体(类型见 risk-analysis 模块)
  *
- * 对应后端调用入口(BidRecordController.java):
- *   - GET  /bid-record/{id}                 → getBidRecord
- *   - GET  /bid-record?page=&pageSize=&sort= → listBidRecord (PageHelper 分页)
- *   - POST /bid-record/analyze-risk/{id}    → analyzeRisk (同步 DeepSeek,落库 risk_analysis)
+ * 对应后端调用入口:
+ *   - BidRecordController: GET /bid-record/{id}、GET /bid-record?page=&pageSize=&sort=
+ *   - RiskAnalysisController: POST /bid-record/analyze-risk/{id}
+ *     (同步调用 OpenAI 兼容模型并落库 risk_analysis)
  *
  * 跨模块依赖: RiskAnalysis 类型来自 types/risk-analysis.ts(后端独立 Controller 后
  *           前端同步分离,bid-record 通过 import 引用,严格单向依赖)。
@@ -27,10 +27,11 @@
  *   export function listBidRecords(query: ListRequest): Promise<PageResult<BidRecord>>
  *   export function analyzeRisk(id: number): Promise<RiskAnalysis>            // 跨模块: 副作用落库 risk_analysis
  *
- * 关系:3 个函数一对一映射 BE BidRecordController 的端点:
+ * 关系:3 个函数一对一映射 BE 的投标记录查询与风险分析端点:
  *   getBidRecord     ↔ GET  /bid-record/{id}
  *   listBidRecords   ↔ GET  /bid-record
- *   analyzeRisk      ↔ POST /bid-record/analyze-risk/{id}     (BE 同步 DeepSeek → 落库 risk_analysis)
+ *   analyzeRisk      ↔ POST /bid-record/analyze-risk/{id}
+ *                      (BE 同步调用 OpenAI 兼容模型 → 落库 risk_analysis)
  *
  * 调用方(view):
  *   - bid-inviter/BidRecord/List.vue   → listBidRecords + analyzeRisk (行内按钮)
@@ -72,9 +73,10 @@ export function listBidRecords(
 }
 
 /**
- * POST /bid-record/analyze-risk/{id} 触发 AI 风险分析(同步 DeepSeek 调用)。
+ * POST /bid-record/analyze-risk/{id} 触发 AI 风险分析(同步调用 OpenAI 兼容模型)。
  *
- * 流程: BE 同步调用 DeepSeek → 解析 JSON → 落库 risk_analysis 表 → 返回最新 analysis。
+ * 流程: BE 汇总资信 Markdown → 调用模型 → 解析结构化 JSON
+ *      → 落库 risk_analysis 表 → 返回最新 analysis。
  * 耗时可能数秒到数十秒,前端按钮需置 loading。
  */
 export function analyzeRisk(id: number): Promise<RiskAnalysis> {

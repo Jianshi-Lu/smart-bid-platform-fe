@@ -33,20 +33,23 @@
  * Supplier/Home.vue 也可改成嵌套布局(layout + 子路由)。
  *
  * ─── Class hierarchy ───
- *   const routes: RouteRecordRaw[]   // 14 条路由(13 个明确入口 + 1 通配 404)
+ *   const routes: RouteRecordRaw[]   // 16 条路由(15 个明确入口 + 1 通配 404)
  *   export const router = createRouter({ history, routes })
  *
  * 关系:
  *   - 路由表 1:1 映射 view 组件:
  *     /                                → common/RoleSelector.vue
  *     /bid-inviter                       → bid-inviter/Home.vue
+ *     /bid-inviter/login                 → bid-inviter/Login.vue
  *     /bid-inviter/invitation/{list,create,edit/:id}  → 3 个 view
  *     /bid-inviter/bid-handler-info/{list,create}     → 2 个 view
  *     /bid-inviter/bid-record/list                    → 1 个 view
  *     /bid-inviter/risk-analysis/list                 → 1 个 view
- *     /supplier                       → supplier/Home.vue
- *     /supplier/invitation/list       → supplier/InvitationList.vue
- *     /supplier/bid-record/create     → supplier/BidRecordCreate.vue
+ *     /supplier                           → supplier/Home.vue
+ *     /supplier/login                     → supplier/Login.vue
+ *     /supplier/invitation/list           → supplier/InvitationList.vue
+ *     /supplier/bid-record/create         → supplier/BidRecordCreate.vue
+ *     /supplier/my-bids                   → supplier/MyBids.vue
  *     /:pathMatch(.*)*                → common/NotFound.vue
  *
  *   - meta.title: 浏览器 tab 标题(未接入 document.title,保留)

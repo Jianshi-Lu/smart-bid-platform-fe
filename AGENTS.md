@@ -18,7 +18,9 @@ Java 后端 http://localhost:8080
   └── OpenAI 兼容模型服务
 ```
 
-当前没有鉴权、用户会话、租户隔离或 Pinia 全局状态。不要在前端自行复制后端业务规则；尤其不要自行生成 `bidNo`、`bidAt`、文件路径、上传批次号或风险分析结果。
+当前使用演示级 HTTP Basic 鉴权：浏览器按角色把账号凭据保存在 localStorage，请求由
+`src/api/http.ts` 注入 Authorization，Java 后端仍是最终鉴权边界。没有租户隔离、RBAC
+或 Pinia 全局状态。不要在前端自行复制后端业务规则；尤其不要自行生成 `bidNo`、`bidAt`、文件路径或风险分析结果。
 
 ## 2. 技术栈与开发命令
 
@@ -61,17 +63,18 @@ src/
 │   ├── bid-handler-info.ts    招标经办人 API
 │   ├── bid-record.ts          投标记录 CRUD/风险分析触发 API
 │   ├── risk-analysis.ts       风险分析历史查询 API
-│   └── credential-file.ts     资信文件列表/上传/删除 API
+│   ├── bidder-bid-record.ts   投标方记录 CRUD 与资信上传 API
+│   └── credential-file.ts     资信文件列表/删除/下载/SSE API
 ├── types/                     与 Java DTO/响应字段对齐的 TypeScript 类型
 ├── views/
 │   ├── common/                角色选择、404
-│   ├── purchaser/             招标方首页及四个业务模块
+│   ├── bid-inviter/           招标方登录、首页及业务模块
 │   └── supplier/              投标方首页、项目列表、投标录入
 ├── shared/
-│   ├── components/            PageHeader、CredentialFileUpload、FileLibraryPanel
-│   ├── composables/           usePagedList 分页与旧请求保护
+│   ├── components/            PageHeader、FileUploadPanel 等通用组件
 │   ├── errors/                ApiError
 │   └── utils/                 错误文案、格式化、Element Plus 标签颜色
+├── composables/               登录状态与 usePagedList
 ├── router/index.ts            Hash History 路由表
 ├── main.ts                    应用启动、插件注册、挂载
 ├── App.vue                    顶部品牌栏和 router-view
@@ -90,30 +93,28 @@ api/{module} → api/http.ts → shared/errors/api-error.ts
 
 ## 4. 路由与角色入口
 
-路由使用 `createWebHashHistory()`，当前 14 条记录：13 个明确入口 + 1 个通配 404。
+路由使用 `createWebHashHistory()`，当前 16 条记录：15 个明确入口 + 1 个通配 404。
 
 | 路径 | 页面/职责 |
 |---|---|
 | `/` | `views/common/RoleSelector.vue`，选择招标方或投标方 |
-| `/purchaser` | 招标方首页，4 个业务模块卡片及单轮问答面板 |
-| `/purchaser/invitation/list` | 招标公告分页列表 |
-| `/purchaser/invitation/create` | 创建招标公告 |
-| `/purchaser/invitation/edit/:id` | 编辑招标公告 |
-| `/purchaser/bid-handler-info/list` | 经办人分页列表 |
-| `/purchaser/bid-handler-info/create` | 创建经办人 |
-| `/purchaser/bid-record/list` | 投标记录分页列表，含行内风险分析 |
-| `/purchaser/bid-record/create` | 招标方创建投标记录 |
-| `/purchaser/risk-analysis/list` | 风险分析历史分页列表，只读 |
+| `/bid-inviter` / `/bid-inviter/login` | 招标方首页与登录 |
+| `/bid-inviter/invitation/{list,create,edit/:id}` | 招标公告页面 |
+| `/bid-inviter/bid-handler-info/{list,create}` | 经办人页面 |
+| `/bid-inviter/bid-record/list` | 投标记录分页列表，含详情与风险分析入口 |
+| `/bid-inviter/risk-analysis/list` | 风险分析历史分页列表，只读 |
 | `/supplier` | 投标方首页 |
+| `/supplier/login` | 投标方登录 |
 | `/supplier/invitation/list` | 投标方查看招标项目并选择投标 |
 | `/supplier/bid-record/create?invitationId=N` | 投标方录入投标并在成功后上传资信材料 |
+| `/supplier/my-bids` | 当前账号的投标记录与资信材料详情 |
 | `/:pathMatch(.*)*` | `NotFound.vue` |
 
-页面采用懒加载 import。固定导航使用 `router-link`，带参数或条件的跳转使用 `useRouter().push/replace`。新增角色业务应挂到对应 `/supplier/*` 或 `/purchaser/*` 前缀下。
+页面采用懒加载 import。固定导航使用 `router-link`，带参数或条件的跳转使用 `useRouter().push/replace`。路由守卫只做本地登录态引导，后端仍需逐请求鉴权。新增角色业务应挂到对应 `/supplier/*` 或 `/bid-inviter/*` 前缀下。
 
 ## 5. Java 后端契约与 API 模块
 
-当前前端 API 层共有 16 个函数，按模块分组；这不是 Java 后端的全部端点。
+当前前端 API 层按业务、登录、SSE 和下载能力分组；这不是 Java 后端的全部端点。
 
 | 前端模块 | API 函数/端点 | 页面调用方 |
 |---|---|---|
@@ -121,8 +122,10 @@ api/{module} → api/http.ts → shared/errors/api-error.ts
 | 招标经办人 | 创建、分页查询，共 2 个：`/bid-handler-info/*` | 招标方经办人页面 |
 | 投标记录 | 创建、按 ID 查询、分页查询、`POST /bid-record/analyze-risk/{id}`，共 4 个 | 招标方投标页面；投标方录入复用创建 |
 | 风险分析 | `GET /risk-analysis` 分页查询历史，共 1 个 | 招标方风险分析列表 |
-| 资信文件 | `GET/POST /bidder/bid-records/{id}/credential-files`（列表/上传）、`DELETE /bidder/bid-records/{id}/credential-files/{fileId}`，共 3 个 | `CredentialFileUpload.vue`（投标录入）、`FileLibraryPanel.vue`（我的投标详情） |
-| chat-agent | `POST /chat-agent/chat`，共 1 个 | `ChatAgentPanel.vue` |
+| 登录 | `/bidder/auth/*`、`/bid-inviter/auth/*` | 两个登录页和对应 auth composable |
+| 资信文件 | `GET/POST /bidder/bid-records/{id}/credential-files`、删除、下载和 SSE | `CredentialFileUploadPanel.vue`（投标录入和我的投标详情共用） |
+| 知识文件 | `/knowledge-files` 上传、列表、重试、删除、下载和 SSE | `KnowledgeFileUploadPanel.vue` |
+| chat-agent | 会话创建/改名/删除、消息查询和 `POST /chat-agent/chat` | `ChatAgentPanel.vue` |
 
 风险分析按钮位于投标记录 API/页面，但 Java 当前实际由 `RiskAnalysisController` 承载风险分析入口；前端只把它视为同步 HTTP 操作，不直接参与转换、Markdown 汇总或模型调用。
 
@@ -133,7 +136,10 @@ Vite 开发代理把以下前缀转发到 `http://localhost:8080`，浏览器不
 /bid-handler-info
 /bid-record
 /risk-analysis
+/bidder
+/bid-inviter
 /credential-files
+/knowledge-files
 /chat-agent
 /service-status
 ```
@@ -211,28 +217,25 @@ onMounted → usePagedList.load()
   → 选择项目
   → /supplier/bid-record/create?invitationId=N
   → GET /invitation-for-bid/N 加载公告详情
-  → POST /bid-record/add 创建投标记录
+  → POST /bidder/bid-records 创建投标记录
   → 从响应取得 bidRecordId
-  → 解锁 CredentialFileUpload.vue
-  → POST /credential-files/upload (multipart)
+  → 挂载 CredentialFileUploadPanel.vue
+  → POST /bidder/bid-records/{id}/credential-files (multipart)
 ```
 
-`BidRecordCreate.vue` 在创建成功前禁用资信上传，并在成功后锁定投标表单，避免投标记录 ID 尚未存在或重复创建导致文件归属错误。
+`BidRecordCreate.vue` 在创建成功前不挂载资信上传组件，并在成功后锁定投标表单，避免投标记录 ID 尚未存在或重复创建导致文件归属错误。
 
-`FileLibraryPanel.vue` 是从招标方知识文件面板抽离的通用文件面板：选择/逐个上传/
-重选/取消、乐观占位、列表、详情、可选重试与删除均由适配器 Props 注入，
-招标方知识文件与投标方资信材料通过薄包装复用（见 `views/bid-inviter/components/
-KnowledgeFileUploadPanel.vue` 与 `views/supplier/MyBids.vue`）。
+`shared/components/FileUploadPanel.vue` 是中性的文件上传与生命周期组件：多选后统一点击
+“上传文件”批量提交，每行仅以 X 图标移除尚未上传的文件；列表、详情、下载、可选重试、
+删除和 SSE 刷新均由适配器 Props 注入。它不得导入知识文件或资信文件 API，也不得包含
+角色、投标记录或知识库业务判断。
 
-`CredentialFileUpload.vue` 仍用于投标录入页（提交前锁定与校验语义），职责只到浏览器文件：
+业务差异只保留在两个页面级薄适配器中：
 
-- 使用原生 `<input type="file" multiple>` 获取 `File[]`。
-- FormData 重复追加 `files`，另加 `bidRecordId`；追加同一批次时带后端第一次返回的 `uploadBatchId`。
-- 不手动设置 `Content-Type`，让浏览器生成 multipart boundary。
-- 维护 `SELECTED/UPLOADING/FAILED` 的待上传状态和 `UPLOADED/REMOVED` 的已上传状态；
-  已上传列表为前端内存态，不向后端回读（我的投标详情使用 FileLibraryPanel 回读列表）。
-- 不读取绝对路径、不调用 Python、不负责 Markdown 转换或风险分析。
-- 删除前要求后端返回有效 `fileId`；缺少 `fileId` 时前端禁用删除并提示。删除接口最终是否物理删除由后端决定，当前前端不假设存储实现。
+- `views/bid-inviter/components/KnowledgeFileUploadPanel.vue` 映射知识文件 API、状态和文案；
+- `views/supplier/components/CredentialFileUploadPanel.vue` 映射资信文件 API、投标记录上下文、状态和文案，并同时供 `BidRecordCreate.vue` 与 `MyBids.vue` 使用。
+
+上传 API 仍使用原生 `File[]` 和浏览器生成的 multipart boundary；完整文件元数据必须从列表接口回读。前端不读取绝对路径、不调用 Python，也不假设后端对象存储、转换、向量化或删除的内部实现。
 
 ### 8.3 风险分析
 
@@ -281,8 +284,8 @@ KnowledgeFileUploadPanel.vue` 与 `views/supplier/MyBids.vue`）。
 
 已知限制/待确认：
 
-- 无登录、鉴权、角色权限、租户隔离；当前 purchaser/supplier 只是前端入口分流，不是安全边界。
-- 投标方没有“我创建的投标记录”列表和按当前用户过滤能力。
+- 当前是演示级 Basic Auth；前端路由守卫只做导航，Java 后端才是实际安全边界。没有租户隔离或 RBAC。
+- 投标方已具备“我的投标”列表，后端按当前投标方账号过滤。
 - 投标方风险分析列表尚未实现。
 - 项目列表当前未由前端强制只显示 `PUBLISHED`，也没有列头排序交互，列表排序值通常写死为 ID 倒序。
 - 主数据详情页、删除操作集成、经办人/投标记录字段下拉选择尚未完整实现。

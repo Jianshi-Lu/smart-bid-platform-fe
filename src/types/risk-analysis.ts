@@ -8,7 +8,7 @@
  *
  * 特殊字段:
  *   - riskLevel: 枚举字符串 (LOW / MEDIUM / HIGH / CRITICAL),用 RiskLevel 类型约束
- *   - rawResponse: DeepSeek 原始 JSON 字符串,长度大,UI 默认不展示
+ *   - rawResponse: 风险分析模型原始 JSON 字符串,长度大,UI 默认不展示
  *   - promptVersion: 提示词版本,可追溯 AI 行为
  *
  * 依赖关系: 仅依赖 types/common.ts 的通用 PageRequest。
@@ -42,7 +42,7 @@
 import type { PageRequest } from '@/types/common'
 
 /**
- * 风险等级枚举(对齐 BE DeepSeek 返回的 riskLevel 字段)。
+ * 风险等级枚举(对齐 BE Structured Output schema 的 riskLevel 字段)。
  * 视图层 RISK_LEVEL_TYPE 颜色映射以本类型为 key,新增等级必须同步。
  */
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
@@ -60,7 +60,7 @@ export interface RiskAnalysis {
     riskLevel: RiskLevel        // 风险等级(枚举联合: LOW / MEDIUM / HIGH / CRITICAL),强类型
     summary: string             // 风险摘要(AI 生成的简短描述)
     suggestions: string         // 风险建议(AI 生成的处置建议)
-    rawResponse?: string        // DeepSeek 原始 JSON 字符串(可选,长度大,UI 默认不展示)
+    rawResponse?: string        // 风险分析模型原始 JSON 字符串(可选,长度大,UI 默认不展示)
     promptVersion?: string      // 提示词版本(可选,用于追溯 AI 行为)
     analyzedAt: string          // 分析时间,ISO-8601 字符串
 }
