@@ -79,11 +79,16 @@ export function downloadKnowledgeFile(
         .then((resp) => resp.data)
 }
 
-/** 订阅知识文件转换/向量化状态变化。 */
+/**
+ * 订阅知识文件 .md 转换/向量化状态变化。
+ * connected 事件代表 SSE 已建立，触发一次数据库回读以补偿建连或重连间隙。
+ */
 export function subscribeKnowledgeFileEvents(
     onUpdate: () => void,
 ): () => void {
     return subscribeToSse('/knowledge-files/events', (message) => {
-        if (message.event === 'file-status') onUpdate()
+        if (message.event === 'connected' || message.event === 'file-status') {
+            onUpdate()
+        }
     })
 }

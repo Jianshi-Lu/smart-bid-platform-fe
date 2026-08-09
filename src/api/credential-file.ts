@@ -55,7 +55,10 @@ export function downloadCredentialFile(
         .then((resp) => resp.data)
 }
 
-/** 订阅指定投标记录下资信文件的转换状态变化。 */
+/**
+ * 订阅指定投标记录下资信文件 .md 转换状态变化。
+ * connected 事件代表 SSE 已建立，触发一次数据库回读以补偿建连或重连间隙。
+ */
 export function subscribeCredentialFileEvents(
     bidRecordId: number,
     onUpdate: () => void,
@@ -63,7 +66,9 @@ export function subscribeCredentialFileEvents(
     return subscribeToSse(
         `/bidder/bid-records/${bidRecordId}/credential-files/events`,
         (message) => {
-            if (message.event === 'file-status') onUpdate()
+            if (message.event === 'connected' || message.event === 'file-status') {
+                onUpdate()
+            }
         },
     )
 }

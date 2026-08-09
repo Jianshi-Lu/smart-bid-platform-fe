@@ -25,6 +25,11 @@ export interface Conversation {
     updatedAt: string
 }
 
+/** 新建会话时可选标题；资料范围由每轮问题动态检索。 */
+export interface CreateConversationRequest {
+    title?: string
+}
+
 /** 会话历史消息视图。 */
 export interface ChatMessage {
     messageId: string

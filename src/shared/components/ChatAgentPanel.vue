@@ -493,7 +493,7 @@ onUnmounted(() => {
                         </template>
                     </div>
                     <p class="chat-header-subtitle">
-                        有任何政策相关问题都可以问我，AI 会结合知识库回答，并记住当前对话。
+                        可随时询问公共知识、任意投标记录及其对应资信材料。
                     </p>
                 </div>
 
@@ -520,7 +520,9 @@ onUnmounted(() => {
                 <div v-else class="message-content">
                     <template v-if="isLocalMessage(message.messageId)">
                         <span class="typing-content">
-                            {{ message.content || '正在输入...' }}
+                            {{ message.status === 'FAILED'
+                                ? (message.errorMessage || '回答失败')
+                                : (message.content || '正在输入...') }}
                         </span>
                         <span
                             v-if="message.status === 'PROCESSING'"
@@ -530,7 +532,11 @@ onUnmounted(() => {
                     <div
                         v-else
                         class="markdown-body"
-                        v-html="renderMarkdown(message.content || (message.status === 'PROCESSING' ? '处理中...' : '暂无内容'))"
+                        v-html="renderMarkdown(
+                            message.status === 'FAILED'
+                                ? (message.errorMessage || '回答失败')
+                                : (message.content || (message.status === 'PROCESSING' ? '处理中...' : '暂无内容')),
+                        )"
                     />
                 </div>
             </div>

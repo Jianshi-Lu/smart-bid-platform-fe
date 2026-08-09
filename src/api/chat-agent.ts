@@ -11,12 +11,15 @@ import type {
     ChatMessage,
     ChatResponse,
     Conversation,
+    CreateConversationRequest,
 } from '@/types/chat-agent'
 
 /** POST /chat-agent/conversations，创建由 Java 生成 ID 的新会话。 */
-export function createChatConversation(title?: string): Promise<Conversation> {
+export function createChatConversation(
+    request: CreateConversationRequest = {},
+): Promise<Conversation> {
     return http
-        .post<Result<Conversation>>('/chat-agent/conversations', title ? { title } : {})
+        .post<Result<Conversation>>('/chat-agent/conversations', request)
         .then((resp) => resp.data.data)
 }
 

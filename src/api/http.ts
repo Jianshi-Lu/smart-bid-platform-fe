@@ -34,7 +34,8 @@ http.interceptors.request.use((config) => {
             )
             config.headers.set('Authorization', `Basic ${basic}`)
         } catch {
-            localStorage.removeItem('bidderCredentials')
+            // 只清理当前请求实际选择的角色凭据，不能误删另一角色的登录态。
+            localStorage.removeItem(key)
         }
     }
     return config
