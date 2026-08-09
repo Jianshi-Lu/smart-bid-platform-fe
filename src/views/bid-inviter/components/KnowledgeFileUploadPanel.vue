@@ -2,14 +2,13 @@
 /**
  * 招标方知识文件入库面板。
  *
- * 选择/批量上传/移除、乐观占位、列表、详情、重试、删除等通用能力
- * 已抽离至 {@link FileLibraryPanel}，本文件只做知识文件适配：
- * 知识文件 API、招标方登录鉴权、转换/向量化状态列与详情字段。
+ * 文件选择、统一批量上传、待上传移除、列表、详情、下载和状态刷新均由
+ * FileUploadPanel 提供；本文件只映射知识文件 API、鉴权和状态文案。
  */
-import FileLibraryPanel, {
+import FileUploadPanel, {
     type StatusColumn,
     type UploadOutcome,
-} from '@/shared/components/FileLibraryPanel.vue'
+} from '@/shared/components/FileUploadPanel.vue'
 import type { DetailField } from '@/shared/components/DetailDialog.vue'
 import {
     deleteKnowledgeFile,
@@ -47,7 +46,7 @@ function getUsername(): string | null {
 
 const statusColumns: StatusColumn<KnowledgeFileRecord>[] = [
     {
-        label: '原文件状态',
+        label: '原文件存储',
         width: 120,
         value: (row) => row.originalStorageStatus,
         dict: 'originalStorageStatus',
@@ -55,7 +54,7 @@ const statusColumns: StatusColumn<KnowledgeFileRecord>[] = [
         descMap: ORIGINAL_STORAGE_STATUS_DESC,
     },
     {
-        label: '转换状态',
+        label: '.md 转换状态',
         width: 110,
         value: (row) => row.convertStatus,
         dict: 'knowledgeConvertStatus',
@@ -85,18 +84,18 @@ function detailFields(row: KnowledgeFileRecord): DetailField[] {
         { label: '文件类型', value: displayOrDash(row.contentType) },
         { label: '文件大小', value: formatFileSize(row.fileSize) },
         { label: '存储介质', value: enumLabel('storageType', row.storageType) },
-        { label: '原文件状态', value: enumLabel('originalStorageStatus', row.originalStorageStatus) },
+        { label: '原文件存储状态', value: enumLabel('originalStorageStatus', row.originalStorageStatus) },
         { label: '原始文件路径', value: displayOrDash(row.originalFilePath) },
         { label: 'Markdown 路径', value: displayOrDash(row.markdownFilePath) },
         { label: '原始文件 SHA-256', value: displayOrDash(row.originalSha256) },
         { label: 'Markdown SHA-256', value: displayOrDash(row.convertedSha256) },
-        { label: '转换状态', value: enumLabel('knowledgeConvertStatus', row.convertStatus) },
+        { label: '.md 转换状态', value: enumLabel('knowledgeConvertStatus', row.convertStatus) },
         { label: '向量化状态', value: enumLabel('knowledgeIndexStatus', row.indexStatus) },
         { label: '内容片段数', value: row.chunkCount ?? '-' },
         { label: '失败阶段', value: enumLabel('knowledgeErrorStage', row.errorStage) },
         { label: '失败原因', value: displayOrDash(row.errorMessage) },
         { label: '创建时间', value: formatTime(row.createdAt) },
-        { label: '转换完成时间', value: formatTime(row.convertedAt) },
+        { label: '.md 转换完成时间', value: formatTime(row.convertedAt) },
         { label: '入库完成时间', value: formatTime(row.indexedAt) },
     ]
 }
@@ -110,9 +109,9 @@ function buildPendingRow(file: File): KnowledgeFileRecord {
         fileSize: file.size,
         originalSha256: null,
         convertedSha256: null,
+        originalStorageStatus: 'STORING',
         storageType: 'MINIO',
         originalFilePath: '',
-        originalStorageStatus: 'STORING',
         markdownFilePath: null,
         convertStatus: 'UPLOADED',
         indexStatus: 'PENDING',
@@ -190,7 +189,7 @@ async function uploadFiles(
 
 <template>
     <div class="knowledge-file-panel">
-        <FileLibraryPanel
+        <FileUploadPanel
             title="知识文件入库"
             description="上传文档后即可用于智能问答知识库"
             :list-api="(page, pageSize) => listKnowledgeFiles({ page, pageSize })"

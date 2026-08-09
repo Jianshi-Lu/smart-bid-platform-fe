@@ -63,6 +63,14 @@ export const CREDENTIAL_CONVERT_STATUS_TYPE: Record<string, ElementTagType> = {
   FAILED: 'danger',
 }
 
+/** 资信文件向量化状态 → 标签颜色。 */
+export const CREDENTIAL_INDEX_STATUS_TYPE: Record<string, ElementTagType> = {
+  PENDING: 'info',
+  VECTORIZING: 'warning',
+  VECTORIZED: 'success',
+  FAILED: 'danger',
+}
+
 /** 原始文件对象存储状态 → 标签颜色。 */
 export const ORIGINAL_STORAGE_STATUS_TYPE: Record<string, ElementTagType> = {
   STORING: 'warning',

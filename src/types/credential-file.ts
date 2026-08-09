@@ -21,10 +21,13 @@ export interface CredentialFile {
     originalStorageStatus?: string | null
     markdownFilePath?: string | null
     convertStatus: CredentialFileConvertStatus
+    indexStatus: string
+    chunkCount?: number | null
     errorMessage?: string | null
     errorStage?: string | null
     createdAt?: string | null
     convertedAt?: string | null
+    indexedAt?: string | null
     boundAt?: string | null
     deletedAt?: string | null
     deletionStatus?: string | null
@@ -33,6 +36,28 @@ export interface CredentialFile {
     deletionStartedAt?: string | null
 }
 
+/**
+ * POST /bidder/bid-records/{id}/credential-files 的单文件响应。
+ *
+ * 上传阶段只返回后端 UploadResponse.UploadedFile 中的字段；完整文件元数据
+ * 仍通过资信文件列表接口以 CredentialFile 读取。
+ */
+export interface CredentialFileUploadItem {
+    fileId: number
+    fileOrder: number
+    originalFilename: string
+    contentType: string | null
+    fileSize: number
+    originalSha256: string | null
+    originalFilePath: string | null
+    originalStorageStatus: string | null
+    convertStatus: CredentialFileConvertStatus
+    indexStatus: string
+    chunkCount: number | null
+    errorMessage: string | null
+    errorStage: string | null
+}
+
 export interface CredentialFileUploadResponse {
-    files: CredentialFile[]
+    files: CredentialFileUploadItem[]
 }

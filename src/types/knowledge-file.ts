@@ -11,8 +11,8 @@ export interface KnowledgeFileDocument {
     convertedObjectKey: string | null
     originalSha256: string | null
     convertedSha256: string | null
-    chunkCount: number | null
     originalStorageStatus: string
+    chunkCount: number | null
     convertStatus: string
     indexStatus: string
     errorMessage: string | null

@@ -20,41 +20,15 @@ import {
     getBidderBidRecord,
     listMyBidRecords,
     updateBidderBidRecord,
-    uploadBidderCredentialFiles,
 } from '@/api/bidder-bid-record'
-import {
-    deleteCredentialFile,
-    downloadCredentialFile,
-    listCredentialFiles,
-    subscribeCredentialFileEvents,
-} from '@/api/credential-file'
 import { useBidderAuth } from '@/composables/useBidderAuth'
 import AmountInput from '@/shared/components/AmountInput.vue'
-import FileLibraryPanel, {
-    type StatusColumn,
-    type UploadOutcome,
-} from '@/shared/components/FileLibraryPanel.vue'
-import type { DetailField } from '@/shared/components/DetailDialog.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import { usePersistedSort } from '@/shared/composables/usePersistedSort'
 import { getErrorMessage } from '@/shared/utils/error'
 import { formatTime, displayOrDash } from '@/shared/utils/format'
-import {
-    CREDENTIAL_CONVERT_STATUS_DESC,
-    ORIGINAL_STORAGE_STATUS_DESC,
-    enumLabel,
-} from '@/shared/utils/dict'
-import {
-    CREDENTIAL_CONVERT_STATUS_TYPE,
-    ORIGINAL_STORAGE_STATUS_TYPE,
-} from '@/shared/utils/el-tag'
 import type { BidRecord } from '@/types/bid-record'
-import type { CredentialFile } from '@/types/credential-file'
-import {
-    markdownDownloadFilename,
-    type DownloadedFile,
-    type FileDownloadKind,
-} from '@/shared/utils/download'
+import CredentialFileUploadPanel from '@/views/supplier/components/CredentialFileUploadPanel.vue'
 
 const router = useRouter()
 const { account, logout } = useBidderAuth()
@@ -95,146 +69,6 @@ const accountLabel = computed(() => {
     if (!acc) return ''
     return acc.displayName || acc.username
 })
-
-function getUsername(): string | null {
-    return account.value?.username ?? null
-}
-
-// ——— 资信材料文件面板适配（复用 FileLibraryPanel） ———
-const credentialStatusColumns: StatusColumn<CredentialFile>[] = [
-    {
-        label: '原文件状态',
-        width: 120,
-        value: (row) => row.originalStorageStatus ?? 'STORED',
-        dict: 'originalStorageStatus',
-        typeMap: ORIGINAL_STORAGE_STATUS_TYPE,
-        descMap: ORIGINAL_STORAGE_STATUS_DESC,
-    },
-    {
-        label: '转换状态',
-        width: 100,
-        value: (row) => row.convertStatus,
-        dict: 'credentialConvertStatus',
-        typeMap: CREDENTIAL_CONVERT_STATUS_TYPE,
-        descMap: CREDENTIAL_CONVERT_STATUS_DESC,
-    },
-]
-
-function formatFileSize(size: number): string {
-    if (size < 1024) return `${size} B`
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-    return `${(size / 1024 / 1024).toFixed(1)} MB`
-}
-
-function credentialDetailFields(row: CredentialFile): DetailField[] {
-    return [
-        { label: '文件名称', value: row.originalFilename },
-        { label: '文件类型', value: displayOrDash(row.contentType) },
-        { label: '文件大小', value: formatFileSize(row.fileSize) },
-        { label: '存储介质', value: enumLabel('storageType', row.storageType) },
-        { label: '原文件状态', value: enumLabel('originalStorageStatus', row.originalStorageStatus) },
-        { label: '转换状态', value: enumLabel('credentialConvertStatus', row.convertStatus) },
-        { label: '失败阶段', value: enumLabel('credentialErrorStage', row.errorStage) },
-        { label: '失败原因', value: displayOrDash(row.errorMessage) },
-        { label: '创建时间', value: formatTime(row.createdAt) },
-        { label: '转换完成时间', value: formatTime(row.convertedAt) },
-    ]
-}
-
-function buildPendingCredentialRow(file: File): CredentialFile {
-    return {
-        fileId: -1,
-        fileUuid: '',
-        fileOrder: 0,
-        originalFilename: file.name,
-        contentType: file.type,
-        fileSize: file.size,
-        originalSha256: '',
-        storageType: 'MINIO',
-        originalStorageStatus: 'STORING',
-        convertStatus: 'UPLOADED',
-        createdAt: new Date().toISOString(),
-    }
-}
-
-function isPendingCredentialRow(row: CredentialFile): boolean {
-    return row.fileId < 0
-}
-
-function isCredentialInProgress(row: CredentialFile): boolean {
-    return row.originalStorageStatus === 'STORING'
-        || row.convertStatus === 'UPLOADED'
-        || row.convertStatus === 'CONVERTING'
-}
-
-async function listCredentialRows(page: number, pageSize: number) {
-    const bidRecordId = detailRecord.value?.bidRecordId
-    if (!bidRecordId) return { list: [], total: 0 }
-    const all = await listCredentialFiles(bidRecordId)
-    const start = (page - 1) * pageSize
-    return {
-        list: all.slice(start, start + pageSize),
-        total: all.length,
-    }
-}
-
-async function uploadCredentialFiles(
-    files: File[],
-    username: string,
-): Promise<UploadOutcome> {
-    const bidRecordId = detailRecord.value?.bidRecordId
-    if (!bidRecordId) throw new Error('投标记录无效，无法上传资信材料')
-    const response = await uploadBidderCredentialFiles(
-        files,
-        bidRecordId,
-        username,
-    )
-    const failedNames = (response.files ?? [])
-        .filter((item) => item.convertStatus === 'FAILED')
-        .map((item) => item.originalFilename)
-    return { failedNames }
-}
-
-async function deleteCredentialRow(row: CredentialFile) {
-    const bidRecordId = detailRecord.value?.bidRecordId
-    if (!bidRecordId) throw new Error('投标记录无效，无法删除资信材料')
-    await deleteCredentialFile(bidRecordId, row.fileId)
-}
-
-function subscribeCredentialUpdates(onUpdate: () => void): () => void {
-    const bidRecordId = detailRecord.value?.bidRecordId
-    return bidRecordId
-        ? subscribeCredentialFileEvents(bidRecordId, onUpdate)
-        : () => undefined
-}
-
-function isCredentialDownloadable(
-    row: CredentialFile,
-    kind: FileDownloadKind,
-): boolean {
-    if (isPendingCredentialRow(row)) return false
-    if (kind === 'original') {
-        return row.originalStorageStatus === 'STORED'
-            && Boolean(row.originalFilePath && row.originalSha256)
-    }
-    return row.convertStatus === 'CONVERTED'
-        && Boolean(row.markdownFilePath && row.convertedSha256)
-}
-
-async function downloadCredentialRow(
-    row: CredentialFile,
-    kind: FileDownloadKind,
-): Promise<DownloadedFile> {
-    const bidRecordId = detailRecord.value?.bidRecordId
-    if (!bidRecordId) throw new Error('投标记录无效，无法下载资信材料')
-    const blob = await downloadCredentialFile(bidRecordId, row.fileId, kind)
-    return {
-        blob,
-        filename: kind === 'original'
-            ? row.originalFilename
-            : markdownDownloadFilename(row.originalFilename),
-    }
-}
 
 async function loadRecords() {
     loading.value = true
@@ -443,28 +277,9 @@ onMounted(loadRecords)
           </span>
           资信材料
         </div>
-        <FileLibraryPanel
-          title="资信材料"
-          description=""
+        <CredentialFileUploadPanel
+          :bid-record-id="detailRecord.bidRecordId"
           embedded
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.html"
-          :list-api="listCredentialRows"
-          :upload-api="uploadCredentialFiles"
-          :delete-api="deleteCredentialRow"
-          :get-username="getUsername"
-          :row-key="(row) => String(row.fileId)"
-          :build-pending-row="buildPendingCredentialRow"
-          :is-pending-row="isPendingCredentialRow"
-          :detail-fields="credentialDetailFields"
-          :status-columns="credentialStatusColumns"
-          :in-progress-checker="isCredentialInProgress"
-          :subscribe-updates="subscribeCredentialUpdates"
-          :download-api="downloadCredentialRow"
-          :downloadable-checker="isCredentialDownloadable"
-          dropzone-title="点击选择资信材料"
-          dropzone-hint="支持多个文件；选择后点击统一上传"
-          :confirm-delete-text="() => '确定删除该资信文件吗？删除后无法恢复。'"
-          empty-text="还没有上传的资信材料"
         />
       </div>
 

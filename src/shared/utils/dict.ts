@@ -86,7 +86,7 @@ export const CREDENTIAL_CONVERT_STATUS_LABEL: Record<string, string> = {
     FAILED: '失败',
 }
 
-/** 原始文件落入对象存储的状态显示映射。 */
+/** 原始文件对象存储状态显示映射（知识文件与资信文件共用）。 */
 export const ORIGINAL_STORAGE_STATUS_LABEL: Record<string, string> = {
     STORING: '原文件上传中',
     STORED: '原文件已存储',
@@ -101,6 +101,7 @@ export const STORAGE_TYPE_LABEL: Record<string, string> = {
 
 /** 知识文件失败阶段显示映射。 */
 export const KNOWLEDGE_ERROR_STAGE_LABEL: Record<string, string> = {
+    UPLOAD: '上传',
     CONVERT: '转换',
     VECTORIZE: '向量化',
     UNKNOWN: '未知',
@@ -110,7 +111,14 @@ export const KNOWLEDGE_ERROR_STAGE_LABEL: Record<string, string> = {
 export const CREDENTIAL_ERROR_STAGE_LABEL: Record<string, string> = {
     UPLOAD: '上传',
     CONVERT: '转换',
+    VECTORIZE: '向量化',
     UNKNOWN: '未知',
+}
+
+export const ORIGINAL_STORAGE_STATUS_DESC: Record<string, string> = {
+    STORING: '正在写入 MinIO 或其他对象存储',
+    STORED: '原始文件已完成对象存储写入并通过校验',
+    FAILED: '原始文件写入对象存储失败，可重试上传',
 }
 
 /** 投标记录风险分析状态显示映射。 */
@@ -137,12 +145,21 @@ export const KNOWLEDGE_INDEX_STATUS_LABEL: Record<string, string> = {
     FAILED: '失败',
 }
 
+/** 资信文件向量化状态显示映射。 */
+export const CREDENTIAL_INDEX_STATUS_LABEL: Record<string, string> = {
+    PENDING: '待向量化',
+    VECTORIZING: '向量化中',
+    VECTORIZED: '已入库',
+    FAILED: '失败',
+}
+
 /** 固定枚举字段的统一显示注册表：字段代码名 → 英文值 → 中文显示。 */
 export type EnumFieldKey =
     | 'bidNoticeStatus'
     | 'riskLevel'
     | 'riskAnalysisStatus'
     | 'credentialConvertStatus'
+    | 'credentialIndexStatus'
     | 'originalStorageStatus'
     | 'credentialErrorStage'
     | 'knowledgeConvertStatus'
@@ -159,6 +176,7 @@ export const FIELD_ENUM_LABELS: Record<EnumFieldKey, Record<string, string>> = {
     riskLevel: RISK_LEVEL_LABEL,
     riskAnalysisStatus: RISK_ANALYSIS_STATUS_LABEL,
     credentialConvertStatus: CREDENTIAL_CONVERT_STATUS_LABEL,
+    credentialIndexStatus: CREDENTIAL_INDEX_STATUS_LABEL,
     originalStorageStatus: ORIGINAL_STORAGE_STATUS_LABEL,
     credentialErrorStage: CREDENTIAL_ERROR_STAGE_LABEL,
     knowledgeConvertStatus: KNOWLEDGE_CONVERT_STATUS_LABEL,
@@ -200,17 +218,19 @@ export const CREDENTIAL_CONVERT_STATUS_DESC: Record<string, string> = {
     FAILED: '转换失败',
 }
 
-export const ORIGINAL_STORAGE_STATUS_DESC: Record<string, string> = {
-    STORING: '正在写入 MinIO 或其他对象存储',
-    STORED: '原始文件已完成对象存储写入并通过校验',
-    FAILED: '原始文件写入对象存储失败，可重试上传',
-}
-
 export const KNOWLEDGE_INDEX_STATUS_DESC: Record<string, string> = {
     PENDING: '等待写入向量库',
     VECTORIZING: '正在写入 Chroma 向量库',
     VECTORIZED: '已写入向量库，可用于智能问答',
     FAILED: '向量化失败，可点击重试',
+}
+
+/** 资信文件向量化状态图例说明。 */
+export const CREDENTIAL_INDEX_STATUS_DESC: Record<string, string> = {
+    PENDING: '等待转换完成后写入资信专用向量库',
+    VECTORIZING: '正在写入资信专用 Chroma 集合',
+    VECTORIZED: '已写入资信专用向量库，可在绑定投标记录的会话中检索',
+    FAILED: '向量化失败；转换产物仍保留，可重新触发转换后重试',
 }
 
 /** 字典映射：已知值转中文，未知值原样显示，空值显示 -。 */

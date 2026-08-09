@@ -1,13 +1,10 @@
 <script setup lang="ts" generic="Row extends { originalFilename: string; createdAt?: string | null }">
 /**
- * 通用文件面板：多选/批量上传/移除 + 生命周期列表。
+ * 通用文件上传与生命周期面板。
  *
- * 由招标方知识文件面板抽离而来，通过适配器 Props 接入不同业务：
- * - 知识文件：上传后转换 + 向量化，支持重试、删除（向量 + 对象 + 软删记录）；
- * - 资信文件：上传后转换 Markdown，支持删除（对象 + 软删记录）。
- *
- * 组件内部管理选择文件、乐观占位、列表加载与分页；业务差异（接口、鉴权、
- * 状态列、详情字段、状态事件订阅）全部通过 Props 注入，调用方只需做展示适配。
+ * 组件只管理文件选择、统一批量上传、待上传移除、乐观占位、列表分页、
+ * 详情、下载和状态刷新。接口、鉴权、状态含义与页面文案均由调用方注入；
+ * shared 层不感知文件所属的具体业务。
  */
 import { onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -63,7 +60,7 @@ const props = withDefaults(defineProps<{
     uploadApi: (files: File[], username: string) => Promise<UploadOutcome | void>
     /** 删除一个文件（后端幂等续删，失败提示"删除失败"）。 */
     deleteApi: (row: Row) => Promise<void>
-    /** 可选：按失败点重试（资信文件无重试接口时不传）。 */
+    /** 可选：按失败点重试；业务没有重试接口时不传。 */
     retryApi?: (row: Row) => Promise<unknown>
     /** 可选：只有满足业务失败条件的行才显示重试图标。 */
     retryableChecker?: (row: Row) => boolean
@@ -78,13 +75,15 @@ const props = withDefaults(defineProps<{
     statusColumns?: StatusColumn<Row>[]
     /** 判断一行是否仍在处理中；上传/加载后自动轮询直到状态收敛。 */
     inProgressChecker?: (row: Row) => boolean
-    /** 可选：订阅后端状态事件；传入后不启动定时轮询。 */
+    /**
+     * 可选：订阅后端状态事件；连接建立和状态变更都会触发刷新，传入后不启动定时轮询。
+     */
     subscribeUpdates?: (onUpdate: () => void) => () => void
     /** 可选：下载已确认落库的原始文件或已转换的 Markdown 文件。 */
     downloadApi?: (row: Row, kind: FileDownloadKind) => Promise<DownloadedFile>
     /** 判断下载按钮是否应显示；后端仍会再次校验文件状态和权限。 */
     downloadableChecker?: (row: Row, kind: FileDownloadKind) => boolean
-    /** 额外值列（如知识文件的内容片段数）。 */
+    /** 可选的额外值列。 */
     extraColumn?: {
         label: string
         width?: number
@@ -133,10 +132,12 @@ const selectedFiles = ref<File[]>([])
 const uploadingKeys = ref<Set<string>>(new Set())
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
+let statusRefreshTimer: ReturnType<typeof setTimeout> | null = null
 let pollCount = 0
 let unsubscribeUpdates: (() => void) | null = null
 const POLL_INTERVAL_MS = 2000
 const MAX_POLLS = 30
+const STATUS_REFRESH_DEBOUNCE_MS = 120
 
 function hasInProgressRows(): boolean {
     if (!props.inProgressChecker) return false
@@ -165,6 +166,15 @@ function pollUntilSettled() {
     if (!props.inProgressChecker || !hasInProgressRows()) return
     pollCount = 0
     void runPoll()
+}
+
+/** 合并同一批 SSE 状态事件，避免多文件并发处理时重复请求同一列表。 */
+function scheduleStatusRefresh() {
+    if (statusRefreshTimer) return
+    statusRefreshTimer = setTimeout(() => {
+        statusRefreshTimer = null
+        void loadRecords()
+    }, STATUS_REFRESH_DEBOUNCE_MS)
 }
 
 function fileKey(file: File): string {
@@ -276,9 +286,7 @@ async function loadRecords() {
 onMounted(() => {
     void loadRecords().then(() => {
         if (props.subscribeUpdates) {
-            unsubscribeUpdates = props.subscribeUpdates(() => {
-                void loadRecords()
-            })
+            unsubscribeUpdates = props.subscribeUpdates(scheduleStatusRefresh)
         } else {
             pollUntilSettled()
         }
@@ -289,6 +297,10 @@ onUnmounted(() => {
     if (pollTimer) {
         clearTimeout(pollTimer)
         pollTimer = null
+    }
+    if (statusRefreshTimer) {
+        clearTimeout(statusRefreshTimer)
+        statusRefreshTimer = null
     }
     unsubscribeUpdates?.()
     unsubscribeUpdates = null
@@ -401,18 +413,17 @@ function clearDownloadRecord() {
 function chooseDownload(kind: FileDownloadKind) {
     const row = downloadRecord.value
     if (!row || !availableDownloadKinds(row).includes(kind)) return
-    closeDownloadDialog()
     void onDownload(row, kind)
 }
 </script>
 
 <template>
     <el-card
-        v-if="!embedded"
-        class="file-library-panel"
+        class="file-upload-panel"
+        :class="{ embedded }"
         shadow="never"
     >
-        <div class="panel-heading">
+        <div v-if="!embedded" class="panel-heading">
             <div class="heading-title">
                 <span class="heading-icon">
                     <el-icon><DocumentAdd /></el-icon>
@@ -522,7 +533,11 @@ function chooseDownload(kind: FileDownloadKind) {
                 stripe
                 @row-click="openDetail"
             >
-                <el-table-column prop="originalFilename" label="文件" min-width="260">
+                <el-table-column
+                    prop="originalFilename"
+                    label="文件"
+                    :min-width="embedded ? 240 : 260"
+                >
                     <template #default="{ row }: { row: Row }">
                         <div class="file-name-cell">
                             <el-button
@@ -625,210 +640,6 @@ function chooseDownload(kind: FileDownloadKind) {
         />
     </el-card>
 
-    <div v-else class="file-library-panel embedded">
-        <div
-            class="dropzone"
-            role="button"
-            tabindex="0"
-            @click="openFilePicker"
-            @keydown.enter="openFilePicker"
-        >
-            <el-icon class="dropzone-icon"><CloudUploadIcon /></el-icon>
-            <div class="dropzone-text">
-                <span class="dropzone-title">{{ dropzoneTitle }}</span>
-                <span class="dropzone-hint">{{ dropzoneHint }}</span>
-            </div>
-            <input
-                ref="fileInput"
-                type="file"
-                multiple
-                class="hidden-input"
-                :accept="accept"
-                @change="selectFiles"
-            />
-        </div>
-
-        <div v-if="selectedFiles.length" class="selected-section">
-            <div class="selected-header">
-                <span>已选择 {{ selectedFiles.length }} 个文件</span>
-                <el-button
-                    type="primary"
-                    size="small"
-                    :icon="Upload"
-                    :loading="uploadingKeys.size > 0"
-                    :disabled="uploadingKeys.size > 0"
-                    @click="uploadSelectedFiles"
-                >
-                    上传文件
-                </el-button>
-            </div>
-            <ul class="file-list">
-                <li v-for="file in selectedFiles" :key="fileKey(file)">
-                    <el-icon class="file-icon"><Document /></el-icon>
-                    <span class="file-name">{{ file.name }}</span>
-                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
-                    <el-button
-                        class="file-remove-button"
-                        text
-                        type="danger"
-                        :icon="Close"
-                        :disabled="uploadingKeys.size > 0"
-                        title="移除文件"
-                        aria-label="移除文件"
-                        @click="cancelFile(file)"
-                    />
-                </li>
-            </ul>
-        </div>
-
-        <div v-if="records.length" class="history-block">
-            <div class="history-title">
-                <span>{{ title }}列表</span>
-                <el-popover
-                    v-if="statusColumns?.length"
-                    placement="bottom"
-                    :width="300"
-                    trigger="click"
-                >
-                    <template #reference>
-                        <el-icon class="header-help"><QuestionFilled /></el-icon>
-                    </template>
-                    <div class="header-legend">
-                        <div class="header-legend-title">状态说明</div>
-                        <template v-for="column in statusColumns" :key="column.label">
-                            <div class="legend-group-title">{{ column.label }}</div>
-                            <div class="header-legend-items">
-                                <div
-                                    v-for="[value, label] in enumOptions(column.dict)"
-                                    :key="value"
-                                    class="legend-entry"
-                                >
-                                    <el-tag
-                                        size="small"
-                                        disable-transitions
-                                        :type="column.typeMap[value] ?? 'info'"
-                                    >
-                                        {{ label }}
-                                    </el-tag>
-                                    <span>：{{ column.descMap[value] }}</span>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </el-popover>
-            </div>
-
-            <el-table
-                v-loading="listLoading"
-                :data="records"
-                class="clickable-table"
-                :empty-text="emptyText"
-                stripe
-                @row-click="openDetail"
-            >
-                <el-table-column prop="originalFilename" label="文件" min-width="240">
-                    <template #default="{ row }: { row: Row }">
-                        <div class="file-name-cell">
-                            <el-button
-                                v-if="retryApi && retryableChecker?.(row)"
-                                class="file-retry-button"
-                                text
-                                type="primary"
-                                size="small"
-                                :icon="RefreshRight"
-                                :loading="retryingKey === rowKey(row)"
-                                :disabled="Boolean(retryingKey)"
-                                title="重试处理"
-                                aria-label="重试处理"
-                                @click.stop="onRetry(row)"
-                            />
-                            <span class="file-name-text" :title="row.originalFilename">
-                                {{ row.originalFilename }}
-                            </span>
-                            <el-button
-                                v-if="downloadApi"
-                                class="file-download-trigger"
-                                text
-                                type="primary"
-                                size="small"
-                                :icon="Download"
-                                :loading="isDownloadingRow(row)"
-                                :disabled="availableDownloadKinds(row).length === 0 || Boolean(downloadingKey)"
-                                title="下载文件"
-                                aria-label="下载文件"
-                                @click.stop="openDownloadDialog(row)"
-                            />
-                        </div>
-                    </template>
-                </el-table-column>
-                <el-table-column
-                    v-for="column in statusColumns"
-                    :key="column.label"
-                    :label="column.label"
-                    :min-width="column.width"
-                    align="center"
-                >
-                    <template #default="{ row }: { row: Row }">
-                        <el-tag
-                            size="small"
-                            disable-transitions
-                            :type="column.typeMap[column.value(row) ?? ''] ?? 'info'"
-                        >
-                            {{ enumLabel(column.dict, column.value(row)) }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column
-                    v-if="extraColumn"
-                    :label="extraColumn.label"
-                    :min-width="extraColumn.width"
-                    align="center"
-                >
-                    <template #default="{ row }: { row: Row }">
-                        {{ renderValue(extraColumn.value(row)) }}
-                    </template>
-                </el-table-column>
-                <el-table-column label="创建时间" min-width="160">
-                    <template #default="{ row }: { row: Row }">
-                        {{ renderTime(row.createdAt) }}
-                    </template>
-                </el-table-column>
-                <el-table-column label="操作" min-width="110" align="center">
-                    <template #default="{ row }: { row: Row }">
-                        <el-button
-                            size="small"
-                            type="danger"
-                            plain
-                            :icon="Delete"
-                            :loading="deletingKey === rowKey(row)"
-                            :disabled="isPendingRow(row) || Boolean(deletingKey)"
-                            @click.stop="onDelete(row)"
-                        >
-                            删除
-                        </el-button>
-                    </template>
-                </el-table-column>
-            </el-table>
-
-            <div class="page-pagination">
-                <el-pagination
-                    background
-                    layout="total, prev, pager, next"
-                    :total="total"
-                    :page-size="pageSize"
-                    :current-page="page"
-                    @current-change="(value: number) => { page = value; void loadRecords() }"
-                />
-            </div>
-        </div>
-
-        <DetailDialog
-            v-model="detailVisible"
-            :title="`${title}详情`"
-            :fields="detailRecord ? detailFields(detailRecord) : []"
-        />
-    </div>
-
     <el-dialog
         v-model="downloadDialogVisible"
         title="选择下载文件"
@@ -870,18 +681,18 @@ function chooseDownload(kind: FileDownloadKind) {
 </template>
 
 <style scoped>
-.file-library-panel {
+.file-upload-panel {
     border: 1px solid var(--lc-border);
     border-radius: var(--lc-radius-lg);
     background: var(--lc-surface);
     box-shadow: var(--lc-shadow-sm);
 }
 
-.file-library-panel :deep(.el-card__body) {
+.file-upload-panel :deep(.el-card__body) {
     padding: 24px;
 }
 
-.file-library-panel.embedded {
+.file-upload-panel.embedded {
     width: 100%;
     border: 0;
     border-radius: 0;
@@ -889,19 +700,23 @@ function chooseDownload(kind: FileDownloadKind) {
     box-shadow: none;
 }
 
-.file-library-panel.embedded .dropzone {
+.file-upload-panel.embedded :deep(.el-card__body) {
+    padding: 0;
+}
+
+.file-upload-panel.embedded .dropzone {
     padding: 18px 20px;
 }
 
-.file-library-panel.embedded .selected-section {
+.file-upload-panel.embedded .selected-section {
     margin-top: 12px;
 }
 
-.file-library-panel.embedded .history-block {
+.file-upload-panel.embedded .history-block {
     margin-top: 22px;
 }
 
-.file-library-panel.embedded .history-title {
+.file-upload-panel.embedded .history-title {
     margin-bottom: 12px;
     font-size: 15px;
 }

@@ -14,7 +14,6 @@ import { ElMessage } from 'element-plus'
 import { getInvitationForBid } from '@/api/invitation-for-bid'
 import { createBidderBidRecord } from '@/api/bidder-bid-record'
 import AmountInput from '@/shared/components/AmountInput.vue'
-import CredentialFileUpload from '@/shared/components/CredentialFileUpload.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import { getErrorMessage } from '@/shared/utils/error'
 import { enumLabel } from '@/shared/utils/dict'
@@ -22,6 +21,7 @@ import type { InvitationForBid } from '@/types/invitation-for-bid'
 import type { AddRequest, BidRecord } from '@/types/bid-record'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
 import { formatTime, displayOrDash, yesNo } from '@/shared/utils/format'
+import CredentialFileUploadPanel from '@/views/supplier/components/CredentialFileUploadPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -197,10 +197,16 @@ async function onSubmit() {
           </el-tag>
         </div>
       </template>
-      <CredentialFileUpload
+      <CredentialFileUploadPanel
+        v-if="createdBidRecordId !== null"
         :bid-record-id="createdBidRecordId"
-        :disabled="!canUploadCredentials"
-        bidder-mode
+        embedded
+        show-record-context
+      />
+      <el-empty
+        v-else
+        :image-size="48"
+        description="提交投标后可选择资信材料"
       />
     </el-card>
   </div>
@@ -218,7 +224,7 @@ async function onSubmit() {
 }
 
 .credential-card {
-  max-width: 720px;
+  max-width: 960px;
   margin: 16px auto 0;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
