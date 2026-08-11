@@ -24,6 +24,7 @@ import {
 import type { BidNoticeStatus, InvitationForBid } from '@/types/invitation-for-bid'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
 import { formatTime } from '@/shared/utils/format'
+import { getBiddingAvailability } from '@/shared/utils/bidding'
 
 const router = useRouter()
 
@@ -83,10 +84,23 @@ onMounted(() => {
 
 // ——— 行内操作:跳转到投标录入(query 传 invitationId) ———
 function onBid(row: InvitationForBid) {
+  const availability = getBiddingAvailability(row)
+  if (!availability.open) {
+    ElMessage.warning(availability.reason)
+    return
+  }
   router.push({
     path: '/supplier/bid-record/create',
     query: { invitationId: String(row.invitationId) },
   })
+}
+
+function canBid(row: InvitationForBid): boolean {
+  return getBiddingAvailability(row).open
+}
+
+function bidUnavailableReason(row: InvitationForBid): string {
+  return getBiddingAvailability(row).reason
 }
 </script>
 
@@ -178,9 +192,11 @@ function onBid(row: InvitationForBid) {
           <el-button
             type="primary"
             size="small"
+            :disabled="!canBid(row)"
+            :title="bidUnavailableReason(row)"
             @click.stop="onBid(row)"
           >
-            我要投标
+            {{ canBid(row) ? '我要投标' : '不可投标' }}
           </el-button>
         </template>
       </el-table-column>

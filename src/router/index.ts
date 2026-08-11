@@ -42,7 +42,7 @@
  *     /bid-inviter                       → bid-inviter/Home.vue
  *     /bid-inviter/login                 → bid-inviter/Login.vue
  *     /bid-inviter/invitation/{list,create,edit/:id}  → 3 个 view
- *     /bid-inviter/bid-handler-info/{list,create}     → 2 个 view
+ *     /bid-inviter/bid-handler-info/{list,create,edit/:id} → 2 个 view（创建/编辑复用表单）
  *     /bid-inviter/bid-record/list                    → 1 个 view
  *     /bid-inviter/risk-analysis/list                 → 1 个 view
  *     /supplier                           → supplier/Home.vue
@@ -152,6 +152,19 @@ const routes: RouteRecordRaw[] = [
                 { label: '招标方入口', path: '/bid-inviter' },
                 { label: '经办人列表', path: '/bid-inviter/bid-handler-info/list' },
                 { label: '新建经办人' },
+            ],
+        },
+    },
+    {
+        path: '/bid-inviter/bid-handler-info/edit/:id',
+        name: 'bid-inviter-bid-handler-info-edit',
+        component: () => import('@/views/bid-inviter/BidHandlerInfo/Create.vue'),
+        meta: {
+            title: '编辑经办人',
+            breadcrumb: [
+                { label: '招标方入口', path: '/bid-inviter' },
+                { label: '经办人列表', path: '/bid-inviter/bid-handler-info/list' },
+                { label: '编辑经办人' },
             ],
         },
     },

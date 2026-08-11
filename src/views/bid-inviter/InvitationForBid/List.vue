@@ -2,14 +2,18 @@
 /**
  * 招标公告分页列表。
  *
- * usePagedList 负责按 invitation_id 倒序加载；页面保留编辑跳转和状态修改业务。
+ * usePagedList 负责按 invitation_id 倒序加载；页面提供编辑、状态修改和删除。
  * 状态更新成功后重新加载当前页，避免只修改前端行对象造成服务端状态不一致。
  */
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { CaretBottom, CaretTop, Plus, QuestionFilled } from '@element-plus/icons-vue'
-import { listInvitationForBids, updateInvitationForBidStatus } from '@/api/invitation-for-bid'
+import {
+  deleteInvitationForBid,
+  listInvitationForBids,
+  updateInvitationForBidStatus,
+} from '@/api/invitation-for-bid'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
@@ -46,6 +50,7 @@ const statusDialogVisible = ref(false)
 const statusTarget = ref<InvitationForBid | null>(null)
 const selectedStatus = ref<BidNoticeStatus>('DRAFT')
 const statusSubmitting = ref(false)
+const deletingId = ref<number | null>(null)
 
 // ——— 行详情弹窗 ———
 const detailVisible = ref(false)
@@ -80,6 +85,40 @@ function openDetail(row: InvitationForBid) {
 // ——— 创建公告:从列表底部进入创建页 ———
 function goCreate() {
   router.push('/bid-inviter/invitation/create')
+}
+
+/**
+ * 删除由后端校验关联投标记录，并在同一事务记录 DELETE 操作历史。
+ * 当前页删掉最后一行时回退一页，避免列表停留在空白的超出页码。
+ */
+async function onDelete(row: InvitationForBid) {
+  try {
+    await ElMessageBox.confirm(
+        `确定删除招标公告“${row.projectNo}”吗？删除后不可恢复。`,
+        '删除招标公告',
+        {
+          type: 'warning',
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+        },
+    )
+  } catch {
+    return
+  }
+
+  deletingId.value = row.invitationId
+  try {
+    await deleteInvitationForBid(row.invitationId)
+    ElMessage.success('删除成功')
+    const targetPage = rows.value.length === 1 && currentPage.value > 1
+        ? currentPage.value - 1
+        : currentPage.value
+    await load(targetPage)
+  } catch (e) {
+    ElMessage.error(getErrorMessage(e))
+  } finally {
+    deletingId.value = null
+  }
 }
 
 function detailFields(row: InvitationForBid): DetailField[] {
@@ -217,10 +256,20 @@ async function onStatusConfirm() {
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="290" fixed="right">
         <template #default="{ row }: { row: InvitationForBid }">
-          <el-button size="small" type="primary" @click.stop="onEdit(row)">编辑</el-button>
-          <el-button size="small" type="warning" @click.stop="onChangeStatus(row)">修改状态</el-button>
+          <el-button size="small" type="primary" :disabled="deletingId !== null" @click.stop="onEdit(row)">编辑</el-button>
+          <el-button size="small" type="warning" :disabled="deletingId !== null" @click.stop="onChangeStatus(row)">修改状态</el-button>
+          <el-button
+              size="small"
+              type="danger"
+              plain
+              :loading="deletingId === row.invitationId"
+              :disabled="deletingId !== null && deletingId !== row.invitationId"
+              @click.stop="onDelete(row)"
+          >
+            删除
+          </el-button>
         </template>
       </el-table-column>
     </el-table>

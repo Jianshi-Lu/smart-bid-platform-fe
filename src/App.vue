@@ -3,7 +3,7 @@
  * 应用根组件。
  *
  * 只负责:
- *   - 顶部 header:品牌区(整块可点击,跳首页)+ 主区域 <router-view />
+ *   - 顶部 header:公司 Logo + 平台名称品牌区(整块可点击,跳首页)+ 主区域 <router-view />
  *   - 品牌区整合了"首页"跳转,不再单独放 nav
  *   - 未来需右侧 nav(用户管理/设置等),再加 .app-nav 块
  *
@@ -25,17 +25,17 @@
  * ─── Style dependencies ───
  *   - global (style.css): 无
  *   - scoped (本文件 owns):
- *     .app / .app-header (position:sticky, 56px 高, z-index:100)
+ *     .app / .app-header (position:sticky, 64px 高, z-index:100)
  *     .app-header-inner (max-width 1200 居中)
- *     .app-brand-link / .app-brand-link:hover (主色变 #409eff)
- *     .app-brand-link:hover .app-brand-icon
- *     .app-brand-icon
- *     .app-main (min-height: calc(100vh - 56px))
+ *     .app-brand-link / .app-brand-link:hover
+ *     .app-company-logo / .app-brand-divider / .app-brand-text
+ *     .app-main (min-height: calc(100vh - 64px))
  *   - 关键: app-main 高度预留 app-header 高度,避免内容区被遮挡
  */
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Document, Menu } from '@element-plus/icons-vue'
+import { ArrowDown, Menu } from '@element-plus/icons-vue'
+import fosunPharmaLogo from '@/assets/brand/fosun-pharma-logo.png'
 import { useBidInviterAuth } from '@/composables/useBidInviterAuth'
 import { useBidderAuth } from '@/composables/useBidderAuth'
 
@@ -147,12 +147,13 @@ function toggleSection(group: string) {
       <div class="app-header-inner">
         <div class="app-header-left">
           <router-link to="/" class="app-brand-link">
-            <span class="app-brand-mark">
-              <el-icon class="app-brand-icon">
-                <Document />
-              </el-icon>
-            </span>
-            <span class="app-brand-text">智能招投标平台</span>
+            <img
+                :src="fosunPharmaLogo"
+                class="app-company-logo"
+                alt="复星万邦（江苏）医药集团有限公司"
+            />
+            <span class="app-brand-divider" aria-hidden="true" />
+            <span class="app-brand-text">智能招投标管理平台</span>
           </router-link>
 
           <el-button
@@ -260,11 +261,11 @@ function toggleSection(group: string) {
   position: sticky;
   top: 0;
   z-index: 100;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.82);
+  height: 64px;
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--lc-border);
+  border-bottom: 3px solid var(--lc-brand-aqua);
 }
 
 .app-header-inner {
@@ -300,7 +301,8 @@ function toggleSection(group: string) {
 .app-brand-link {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
   color: var(--lc-text);
   font-size: 15px;
   font-weight: 600;
@@ -313,24 +315,24 @@ function toggleSection(group: string) {
   opacity: 0.85;
 }
 
-.app-brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  color: #ffffff;
-  background: linear-gradient(135deg, #1d4ed8, #2563eb 55%, #3b82f6);
-  box-shadow: var(--lc-shadow-sm);
+.app-company-logo {
+  display: block;
+  width: 138px;
+  height: auto;
+  flex-shrink: 0;
 }
 
-.app-brand-icon {
-  font-size: 17px;
+.app-brand-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--lc-brand-aqua);
+  flex-shrink: 0;
 }
 
 .app-brand-text {
+  color: var(--lc-brand-deep);
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .app-breadcrumb {
@@ -365,6 +367,28 @@ function toggleSection(group: string) {
 }
 
 .app-main {
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 64px);
+}
+
+@media (max-width: 900px) {
+  .app-breadcrumb {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header-inner {
+    padding: 0 12px;
+  }
+
+  .app-company-logo {
+    width: 122px;
+  }
+
+  .app-brand-divider,
+  .app-brand-text,
+  .app-account-name {
+    display: none;
+  }
 }
 </style>

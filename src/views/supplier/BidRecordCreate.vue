@@ -21,6 +21,7 @@ import type { InvitationForBid } from '@/types/invitation-for-bid'
 import type { AddRequest, BidRecord } from '@/types/bid-record'
 import { BID_NOTICE_STATUS_TYPE } from '@/shared/utils/el-tag'
 import { formatTime, displayOrDash, yesNo } from '@/shared/utils/format'
+import { getBiddingAvailability } from '@/shared/utils/bidding'
 import CredentialFileUploadPanel from '@/views/supplier/components/CredentialFileUploadPanel.vue'
 
 const route = useRoute()
@@ -58,6 +59,9 @@ const createdBidRecordId = computed<number | null>(() => {
 const canUploadCredentials = computed(
   () => createdBidRecordId.value !== null && !submitting.value
 )
+const biddingAvailability = computed(() => selectedInvitation.value
+  ? getBiddingAvailability(selectedInvitation.value)
+  : { open: false, reason: '尚未加载招标项目' })
 
 // ——— 生命周期 ———
 onMounted(async () => {
@@ -85,6 +89,10 @@ async function onSubmit() {
   if (invitationId.value === null) {
     ElMessage.error('缺少有效的招标项目')
     router.replace('/supplier/invitation/list')
+    return
+  }
+  if (!biddingAvailability.value.open) {
+    ElMessage.error(biddingAvailability.value.reason)
     return
   }
   submitting.value = true
@@ -143,6 +151,14 @@ async function onSubmit() {
           <el-descriptions-item label="商务投标截止">{{ formatTime(selectedInvitation.businessTenderDeadline) }}</el-descriptions-item>
           <el-descriptions-item label="是否固定价">{{ yesNo(selectedInvitation.isFixedPrice) }}</el-descriptions-item>
         </el-descriptions>
+        <el-alert
+          v-if="!biddingAvailability.open"
+          class="bidding-closed-alert"
+          type="warning"
+          :title="biddingAvailability.reason"
+          :closable="false"
+          show-icon
+        />
       </div>
       <el-empty v-else-if="!loadingInvitation" description="无法加载项目信息" />
     </el-card>
@@ -157,7 +173,7 @@ async function onSubmit() {
       </template>
       <el-form
         :model="form"
-        :disabled="submitting || createdBidRecordId !== null"
+        :disabled="submitting || createdBidRecordId !== null || !biddingAvailability.open"
         label-width="120px"
       >
         <el-form-item label="招标公告 ID" required>
@@ -178,8 +194,20 @@ async function onSubmit() {
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" :loading="submitting" native-type="button" @click="onSubmit">
-            {{ createdBidRecordId !== null ? '投标已提交' : submitting ? '提交中...' : '提交投标' }}
+          <el-button
+            type="primary"
+            :loading="submitting"
+            :disabled="!biddingAvailability.open"
+            native-type="button"
+            @click="onSubmit"
+          >
+            {{ createdBidRecordId !== null
+              ? '投标已提交'
+              : submitting
+                ? '提交中...'
+                : biddingAvailability.open
+                  ? '提交投标'
+                  : '当前不可投标' }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -221,6 +249,10 @@ async function onSubmit() {
 .bid-form-card {
   max-width: 720px;
   margin: 0 auto;
+}
+
+.bidding-closed-alert {
+  margin-top: 16px;
 }
 
 .credential-card {

@@ -1,23 +1,23 @@
 <script setup lang="ts">
 /**
- * 创建招标公告表单。
+ * 创建/修改招标公告表单。
  *
- * 表单字段对齐 AddRequest；bidHandlerId 的空 UI 状态在提交前回落为 0，
- * 三个日期字段按 ISO-8601 字符串发送，金额保留两位小数。
- * 必填与业务校验以后端 DTO 为准，请求异常统一交给 getErrorMessage 展示。
+ * 首次提交调用创建接口并保存后端生成的 invitationId；随后留在当前页，
+ * 同一按钮改为调用 PATCH 更新该 ID，避免重复点击产生重复公告。
+ * 页面不展示后端实体 JSON，成功提示只反馈用户可理解的结果。
  */
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listBidHandlers } from '@/api/bid-handler-info'
-import { createInvitationForBid } from '@/api/invitation-for-bid'
+import { createInvitationForBid, updateInvitationForBid } from '@/api/invitation-for-bid'
 import AmountInput from '@/shared/components/AmountInput.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import { getErrorMessage } from '@/shared/utils/error'
 import { enumLabel, enumOptions } from '@/shared/utils/dict'
 import type { BidHandlerInfo } from '@/types/bid-handler-info'
-import type { AddRequest, InvitationForBid } from '@/types/invitation-for-bid'
+import type { AddRequest } from '@/types/invitation-for-bid'
 
-// 保证金用 AmountInput 键盘输入,空值以 undefined 占位,提交时 ?? 0 兜底
+// 保证金用 AmountInput 键盘输入；空值保持 undefined，由后端决定是否存值。
 const form = reactive<AddRequest>({
   bidHandlerId: null as unknown as number,
   projectNo: '',
@@ -40,7 +40,8 @@ const form = reactive<AddRequest>({
 })
 
 const submitting = ref(false)
-const created = ref<InvitationForBid | null>(null)
+/** 首次创建成功后保存后端主键，后续提交改为更新这个公告。 */
+const invitationId = ref<number | null>(null)
 const handlers = ref<BidHandlerInfo[]>([])
 const handlersLoading = ref(false)
 
@@ -69,17 +70,30 @@ async function loadHandlers() {
 onMounted(loadHandlers)
 
 async function onSubmit() {
+  if (submitting.value) return
+  if (!Number.isInteger(form.bidHandlerId) || form.bidHandlerId <= 0) {
+    ElMessage.error('请选择经办人')
+    return
+  }
+
   submitting.value = true
-  created.value = null
   try {
-    const entity = await createInvitationForBid({
-      ...form,
-      bidHandlerId: form.bidHandlerId ?? 0,
-    })
-    created.value = entity
-    ElMessage.success(
-        `创建成功，状态：${enumLabel('bidNoticeStatus', entity.status)}`,
-    )
+    if (invitationId.value === null) {
+      const entity = await createInvitationForBid({
+        ...form,
+        bidHandlerId: form.bidHandlerId,
+      })
+      invitationId.value = entity.invitationId
+      ElMessage.success(
+          `创建成功，状态：${enumLabel('bidNoticeStatus', entity.status)}；现在可继续修改。`,
+      )
+    } else {
+      await updateInvitationForBid(invitationId.value, {
+        ...form,
+        bidHandlerId: form.bidHandlerId,
+      })
+      ElMessage.success('修改成功')
+    }
   } catch (e) {
     const msg = getErrorMessage(e)
     ElMessage.error(msg)
@@ -92,7 +106,7 @@ async function onSubmit() {
 <template>
   <div class="page">
     <PageHeader
-        title="创建招标公告"
+        :title="invitationId ? `编辑招标公告 #${invitationId}` : '创建招标公告'"
         back-to="/bid-inviter/invitation/list"
         back-label="返回公告列表"
     />
@@ -249,18 +263,11 @@ async function onSubmit() {
       </el-form-item>
 
       <el-form-item>
-        <el-button type="primary" :loading="submitting" native-type="submit" @click="onSubmit">
-          {{ submitting ? '提交中...' : '提交' }}
+        <el-button type="primary" :loading="submitting" native-type="button" @click="onSubmit">
+          {{ submitting ? '提交中...' : invitationId ? '修改' : '提交' }}
         </el-button>
       </el-form-item>
       </el-form>
-    </el-card>
-
-    <el-card v-if="created" class="create-result-card">
-      <template #header>
-        <strong>BE 返回实体</strong>
-      </template>
-      <pre style="margin: 0;">{{ JSON.stringify(created, null, 2) }}</pre>
     </el-card>
   </div>
 </template>
@@ -271,8 +278,4 @@ async function onSubmit() {
   margin: 0 auto;
 }
 
-.create-result-card {
-  max-width: 860px;
-  margin: 16px auto 0;
-}
 </style>

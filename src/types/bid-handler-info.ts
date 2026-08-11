@@ -7,10 +7,12 @@
  * ─── Class hierarchy ───
  *   export interface BidHandlerInfo  { 5 字段(主键 + 4 必填) }
  *   export interface AddRequest      { 4 字段(全必填) }
+ *   export interface UpdateRequest   { 4 字段(全可选) }
  *   export type ListRequest = PageRequest
  *
  * 关系:
  *   - AddRequest    是 createBidHandlerInfo 的入参体
+ *   - UpdateRequest 是 updateBidHandlerInfo 的入参体
  *   - ListRequest   是 listBidHandlers 的 query 参数
  *   - BidHandlerInfo 是 BE 返回的实体
  *
@@ -42,6 +44,19 @@ export interface AddRequest {
     companyName: string         // 必填,BE @NotBlank + @Size(max=100)
     departmentName: string      // 必填,BE @NotBlank + @Size(max=100)
     targetEmail: string         // 必填,BE @NotBlank + @Size(max=255)
+}
+
+/**
+ * 经办人部分更新请求。
+ *
+ * 对齐 BE dto.bidhandler.UpdateRequest：未传字段保持原值。
+ * 当前表单始终传递四个完整字段，保留 optional 是为了不把 PATCH 接口误写成 PUT 语义。
+ */
+export interface UpdateRequest {
+    handlerName?: string
+    companyName?: string
+    departmentName?: string
+    targetEmail?: string
 }
 
 /**

@@ -22,6 +22,7 @@ import CloudUploadIcon from '@/shared/components/icons/CloudUploadIcon.vue'
 import DetailDialog, {
     type DetailField,
 } from '@/shared/components/DetailDialog.vue'
+import FileDownloadDialog from '@/shared/components/FileDownloadDialog.vue'
 import { getErrorMessage } from '@/shared/utils/error'
 import {
     enumLabel,
@@ -401,11 +402,6 @@ function openDownloadDialog(row: Row) {
     downloadDialogVisible.value = true
 }
 
-function closeDownloadDialog() {
-    downloadDialogVisible.value = false
-    downloadRecord.value = null
-}
-
 function clearDownloadRecord() {
     downloadRecord.value = null
 }
@@ -640,44 +636,16 @@ function chooseDownload(kind: FileDownloadKind) {
         />
     </el-card>
 
-    <el-dialog
+    <FileDownloadDialog
         v-model="downloadDialogVisible"
-        title="选择下载文件"
-        width="360px"
-        destroy-on-close
+        :filename="downloadRecord?.originalFilename ?? null"
+        :available-kinds="downloadRecord ? availableDownloadKinds(downloadRecord) : []"
+        :downloading-kind="downloadRecord && downloadingKey
+            ? (downloadingKey.endsWith(':original') ? 'original' : 'markdown')
+            : null"
+        @select="chooseDownload"
         @closed="clearDownloadRecord"
-    >
-        <div v-if="downloadRecord" class="download-dialog-content">
-            <div class="download-dialog-filename" :title="downloadRecord.originalFilename">
-                {{ downloadRecord.originalFilename }}
-            </div>
-            <div class="download-dialog-options">
-                <el-button
-                    v-if="availableDownloadKinds(downloadRecord).includes('original')"
-                    type="primary"
-                    plain
-                    :icon="Download"
-                    :loading="downloadingKey === `${rowKey(downloadRecord)}:original`"
-                    @click="chooseDownload('original')"
-                >
-                    下载原文件
-                </el-button>
-                <el-button
-                    v-if="availableDownloadKinds(downloadRecord).includes('markdown')"
-                    type="primary"
-                    plain
-                    :icon="Download"
-                    :loading="downloadingKey === `${rowKey(downloadRecord)}:markdown`"
-                    @click="chooseDownload('markdown')"
-                >
-                    下载.md
-                </el-button>
-            </div>
-        </div>
-        <template #footer>
-            <el-button @click="closeDownloadDialog">取消</el-button>
-        </template>
-    </el-dialog>
+    />
 </template>
 
 <style scoped>
@@ -970,35 +938,4 @@ function chooseDownload(kind: FileDownloadKind) {
     white-space: nowrap;
 }
 
-.download-dialog-content {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.download-dialog-filename {
-    overflow: hidden;
-    color: var(--lc-text);
-    font-size: 14px;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.download-dialog-options {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.download-dialog-options .el-button {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-}
-
-.download-dialog-options .el-button :deep(.el-icon) {
-    width: 22px;
-    margin-right: 8px;
-}
 </style>

@@ -12,6 +12,8 @@ export interface ChatResponse {
     clientMessageId: string
     answer: string
     title?: string | null
+    /** 仅由 Agent 本轮实际访问的投标资料工具返回，供前端加载可下载资信材料。 */
+    referencedBidRecordIds?: number[]
 }
 
 /** 前端新建和切换会话所需的最小视图。 */

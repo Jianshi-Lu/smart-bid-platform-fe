@@ -10,6 +10,7 @@ import {
     Check,
     Close,
     Delete,
+    Download,
     EditPen,
     Plus,
     Promotion,
@@ -22,8 +23,19 @@ import {
     listChatConversations,
     renameChatConversation,
 } from '@/api/chat-agent'
+import {
+    downloadBidInviterCredentialFile,
+    listBidInviterCredentialFiles,
+} from '@/api/bid-inviter-credential-file'
+import FileDownloadDialog from '@/shared/components/FileDownloadDialog.vue'
 import type { ChatMessage, Conversation } from '@/types/chat-agent'
+import type { CredentialFile } from '@/types/credential-file'
 import { getErrorMessage } from '@/shared/utils/error'
+import {
+    markdownDownloadFilename,
+    saveBlobFile,
+    type FileDownloadKind,
+} from '@/shared/utils/download'
 import { marked } from 'marked'
 
 const question = ref('')
@@ -38,6 +50,12 @@ const pendingClientMessageId = ref<string | null>(null)
 const pendingQuestion = ref<string | null>(null)
 const loading = ref(false)
 const conversationLoading = ref(false)
+const credentialFilesByBidRecordId = ref<Record<number, CredentialFile[]>>({})
+const localReferencedBidRecordIds = ref<Record<string, number[]>>({})
+const downloadDialogVisible = ref(false)
+const downloadRecord = ref<CredentialFile | null>(null)
+const downloadingKind = ref<FileDownloadKind | null>(null)
+const credentialFileLoads = new Map<number, Promise<void>>()
 
 const canSubmit = computed(() =>
     question.value.trim().length > 0
@@ -51,6 +69,125 @@ const currentTitle = computed(() =>
 const editingTitle = ref(false)
 const draftTitle = ref('')
 const sidebarWidth = ref(250)
+
+const BID_RECORD_REFERENCE_MARKER = /<!--\s*bid-record-refs\s*:\s*([0-9,\s]+)\s*-->/gi
+const VISIBLE_BID_RECORD_ID = /投标记录\s*(?:ID)?\s*(?:[：:]|\s)\s*(\d+)/g
+
+function normalizeBidRecordIds(values: Array<number | string | null | undefined>): number[] {
+    const ids: number[] = []
+    for (const value of values) {
+        const id = typeof value === 'number' ? value : Number(value)
+        if (!Number.isInteger(id) || id <= 0 || ids.includes(id)) continue
+        ids.push(id)
+    }
+    return ids.slice(0, 12)
+}
+
+/**
+ * 新消息优先使用 Java 返回的工具引用；历史消息使用持久化的 Markdown 注释回放。
+ * 兼容旧历史的可见“投标记录 ID”文本，历史数据无需迁移也可获得下载入口。
+ */
+function referencedBidRecordIdsForMessage(message: ChatMessage): number[] {
+    const localIds = localReferencedBidRecordIds.value[message.messageId]
+    if (localIds) return localIds
+
+    const content = message.content ?? ''
+    const ids: Array<number | string> = []
+    for (const marker of content.matchAll(BID_RECORD_REFERENCE_MARKER)) {
+        ids.push(...marker[1].split(','))
+    }
+    for (const match of content.matchAll(VISIBLE_BID_RECORD_ID)) {
+        ids.push(match[1])
+    }
+    return normalizeBidRecordIds(ids)
+}
+
+async function loadCredentialFilesForBidRecord(bidRecordId: number): Promise<void> {
+    if (Object.hasOwn(credentialFilesByBidRecordId.value, bidRecordId)) return
+    const existing = credentialFileLoads.get(bidRecordId)
+    if (existing) return existing
+
+    const load = listBidInviterCredentialFiles(bidRecordId)
+        .then((files) => {
+            credentialFilesByBidRecordId.value = {
+                ...credentialFilesByBidRecordId.value,
+                [bidRecordId]: files,
+            }
+        })
+        .catch(() => {
+            // 历史会话可能引用了已删除资料；保持回答可读，不把附件加载失败升级为问答失败。
+            credentialFilesByBidRecordId.value = {
+                ...credentialFilesByBidRecordId.value,
+                [bidRecordId]: [],
+            }
+        })
+        .finally(() => {
+            credentialFileLoads.delete(bidRecordId)
+        })
+    credentialFileLoads.set(bidRecordId, load)
+    return load
+}
+
+function hydrateCredentialFiles(history: ChatMessage[]): void {
+    const ids = normalizeBidRecordIds(history
+        .filter((message) => message.role === 'ASSISTANT' && message.status === 'COMPLETED')
+        .flatMap(referencedBidRecordIdsForMessage))
+    void Promise.all(ids.map(loadCredentialFilesForBidRecord))
+}
+
+function credentialFilesForMessage(message: ChatMessage): CredentialFile[] {
+    const deduplicated = new Map<number, CredentialFile>()
+    for (const bidRecordId of referencedBidRecordIdsForMessage(message)) {
+        for (const file of credentialFilesByBidRecordId.value[bidRecordId] ?? []) {
+            deduplicated.set(file.fileId, file)
+        }
+    }
+    return [...deduplicated.values()]
+}
+
+function availableDownloadKinds(file: CredentialFile): FileDownloadKind[] {
+    const kinds: FileDownloadKind[] = []
+    if (file.originalStorageStatus === 'STORED'
+        && Boolean(file.originalFilePath && file.originalSha256)) {
+        kinds.push('original')
+    }
+    if (file.convertStatus === 'CONVERTED'
+        && Boolean(file.markdownFilePath && file.convertedSha256)) {
+        kinds.push('markdown')
+    }
+    return kinds
+}
+
+function openDownloadDialog(file: CredentialFile): void {
+    if (availableDownloadKinds(file).length === 0 || downloadingKind.value) return
+    downloadRecord.value = file
+    downloadDialogVisible.value = true
+}
+
+async function downloadCredentialFile(kind: FileDownloadKind): Promise<void> {
+    const file = downloadRecord.value
+    if (!file || !availableDownloadKinds(file).includes(kind) || downloadingKind.value) return
+
+    downloadingKind.value = kind
+    try {
+        const blob = await downloadBidInviterCredentialFile(file.fileId, kind)
+        saveBlobFile({
+            blob,
+            filename: kind === 'original'
+                ? file.originalFilename
+                : markdownDownloadFilename(file.originalFilename),
+        })
+        ElMessage.success(`${kind === 'original' ? '原文件' : '.md'}下载已开始`)
+    } catch (error) {
+        ElMessage.error(`下载失败: ${getErrorMessage(error, '')}`)
+    } finally {
+        downloadingKind.value = null
+    }
+}
+
+function clearDownloadRecord(): void {
+    downloadRecord.value = null
+}
 
 function isLocalMessage(messageId: string): boolean {
     return messageId.startsWith('local-')
@@ -124,6 +261,7 @@ async function startNewConversation() {
         conversationId.value = conversation.conversationId
         conversations.value = [conversation, ...conversations.value]
         messages.value = []
+        localReferencedBidRecordIds.value = {}
         void nextTick(scrollMessageHistoryToBottom)
         question.value = ''
         answer.value = ''
@@ -221,6 +359,7 @@ async function selectConversation(selectedConversationId: string) {
         const history = await listChatConversationMessages(selectedConversationId)
         conversationId.value = selectedConversationId
         messages.value = history
+        hydrateCredentialFiles(history)
         scrollMessageHistoryToBottom()
         answer.value = [...history]
             .reverse()
@@ -248,6 +387,7 @@ async function initializeConversations() {
             )
             conversationId.value = firstConversation.conversationId
             messages.value = history
+            hydrateCredentialFiles(history)
             scrollMessageHistoryToBottom()
             answer.value = [...history]
                 .reverse()
@@ -338,6 +478,14 @@ async function submit() {
             question: normalizedQuestion,
         })
         answer.value = response.answer
+        localReferencedBidRecordIds.value = {
+            ...localReferencedBidRecordIds.value,
+            [localAssistant.messageId]: normalizeBidRecordIds(
+                response.referencedBidRecordIds ?? [],
+            ),
+        }
+        void Promise.all((response.referencedBidRecordIds ?? [])
+            .map((id) => loadCredentialFilesForBidRecord(id)))
         if (response.title && activeConversationId) {
             const index = conversations.value.findIndex(
                 (c) => c.conversationId === activeConversationId,
@@ -356,6 +504,7 @@ async function submit() {
             messages.value = await listChatConversationMessages(
                 activeConversationId,
             )
+            hydrateCredentialFiles(messages.value)
             scrollMessageHistoryToBottom()
         } catch {
             // 回答已经成功返回；历史回放失败不覆盖本次问答结果。
@@ -538,6 +687,45 @@ onUnmounted(() => {
                                 : (message.content || (message.status === 'PROCESSING' ? '处理中...' : '暂无内容')),
                         )"
                     />
+                    <div
+                        v-if="message.status === 'COMPLETED'
+                            && credentialFilesForMessage(message).length"
+                        class="message-credential-files"
+                    >
+                        <div class="credential-files-heading">
+                            <span>相关资信材料</span>
+                            <span class="credential-files-records">
+                                投标记录 {{ referencedBidRecordIdsForMessage(message).join('、') }}
+                            </span>
+                        </div>
+                        <div
+                            v-for="file in credentialFilesForMessage(message)"
+                            :key="file.fileId"
+                            class="credential-file-reference"
+                        >
+                            <span class="credential-file-name" :title="file.originalFilename">
+                                {{ file.originalFilename }}
+                            </span>
+                            <span
+                                v-if="availableDownloadKinds(file).length === 0"
+                                class="credential-file-pending"
+                            >
+                                文件处理中
+                            </span>
+                            <el-button
+                                v-else
+                                class="credential-file-download"
+                                text
+                                type="primary"
+                                size="small"
+                                :icon="Download"
+                                :disabled="Boolean(downloadingKind)"
+                                title="下载文件"
+                                aria-label="下载文件"
+                                @click="openDownloadDialog(file)"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -575,6 +763,15 @@ onUnmounted(() => {
             </div>
         </div>
     </el-card>
+
+    <FileDownloadDialog
+        v-model="downloadDialogVisible"
+        :filename="downloadRecord?.originalFilename ?? null"
+        :available-kinds="downloadRecord ? availableDownloadKinds(downloadRecord) : []"
+        :downloading-kind="downloadingKind"
+        @select="downloadCredentialFile"
+        @closed="clearDownloadRecord"
+    />
 </template>
 
 <style scoped>
@@ -793,6 +990,66 @@ onUnmounted(() => {
 
 .assistant-message .message-role {
     color: var(--lc-text-secondary);
+}
+
+.message-credential-files {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--lc-border);
+    white-space: normal;
+}
+
+.credential-files-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--lc-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.credential-files-records {
+    color: var(--lc-text-muted);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.credential-file-reference {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: var(--lc-radius-sm);
+    background: var(--lc-surface);
+}
+
+.credential-file-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--lc-text);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.credential-file-pending {
+    flex: 0 0 auto;
+    color: var(--lc-text-muted);
+    font-size: 11px;
+}
+
+.credential-file-download {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    margin: 0 !important;
+    padding: 0;
 }
 
 .sidebar-resizer {

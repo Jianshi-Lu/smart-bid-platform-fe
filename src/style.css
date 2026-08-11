@@ -1,17 +1,20 @@
-/* 全局设计令牌：贴近 LangChain 官方 UI 的极简圆角风格。 */
+/* 全局设计令牌：基于复星万邦汇报模板的深蓝、标题蓝与浅青品牌体系。 */
 :root {
   /* 品牌与基础色 */
-  --lc-bg: #fafaf8;
+  --lc-brand-deep: #003b82;
+  --lc-brand-blue: #0054a6;
+  --lc-brand-aqua: #a9d9de;
+  --lc-bg: #f7fafc;
   --lc-surface: #ffffff;
-  --lc-surface-muted: #f5f5f2;
-  --lc-border: #e7e5e0;
-  --lc-border-strong: #d6d3cd;
-  --lc-text: #1c1917;
-  --lc-text-secondary: #78716c;
-  --lc-text-muted: #a8a29e;
-  --lc-accent: #2563eb;
-  --lc-accent-strong: #1d4ed8;
-  --lc-accent-soft: #eff6ff;
+  --lc-surface-muted: #f2f7f8;
+  --lc-border: #dce7eb;
+  --lc-border-strong: #c4d5dc;
+  --lc-text: #1f2937;
+  --lc-text-secondary: #64717c;
+  --lc-text-muted: #93a1aa;
+  --lc-accent: var(--lc-brand-blue);
+  --lc-accent-strong: var(--lc-brand-deep);
+  --lc-accent-soft: #edf6fa;
   --lc-danger: #dc2626;
 
   /* 圆角与阴影 */
@@ -19,34 +22,34 @@
   --lc-radius-md: 12px;
   --lc-radius-lg: 16px;
   --lc-radius-xl: 20px;
-  --lc-shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
-  --lc-shadow-md: 0 4px 12px rgba(28, 25, 23, 0.06);
-  --lc-shadow-lg: 0 12px 32px rgba(28, 25, 23, 0.1);
+  --lc-shadow-sm: 0 1px 3px rgba(0, 59, 130, 0.06);
+  --lc-shadow-md: 0 6px 18px rgba(0, 59, 130, 0.09);
+  --lc-shadow-lg: 0 16px 36px rgba(0, 59, 130, 0.12);
 
   /* Element Plus 主题覆盖 */
-  --el-color-primary: #2563eb;
-  --el-color-primary-light-3: #5b8def;
-  --el-color-primary-light-5: #9db8f5;
-  --el-color-primary-light-7: #c3d4fa;
-  --el-color-primary-light-8: #dbe5fc;
-  --el-color-primary-light-9: #eff6ff;
-  --el-color-primary-dark-2: #1d4ed8;
+  --el-color-primary: #0054a6;
+  --el-color-primary-light-3: #3d7fbb;
+  --el-color-primary-light-5: #80aad2;
+  --el-color-primary-light-7: #b3cce3;
+  --el-color-primary-light-8: #d7e5f1;
+  --el-color-primary-light-9: #edf6fa;
+  --el-color-primary-dark-2: #003b82;
   --el-color-danger: #dc2626;
   --el-border-radius-base: 10px;
   --el-border-radius-small: 8px;
   --el-border-radius-round: 999px;
-  --el-text-color-primary: #1c1917;
-  --el-text-color-regular: #44403c;
-  --el-text-color-secondary: #78716c;
-  --el-border-color: #e7e5e0;
-  --el-border-color-light: #eceae6;
-  --el-border-color-lighter: #f1efeb;
-  --el-fill-color-light: #f5f5f2;
-  --el-fill-color-lighter: #fafaf8;
-  --el-bg-color-page: #fafaf8;
+  --el-text-color-primary: #1f2937;
+  --el-text-color-regular: #46545f;
+  --el-text-color-secondary: #64717c;
+  --el-border-color: #dce7eb;
+  --el-border-color-light: #e5edf0;
+  --el-border-color-lighter: #edf3f5;
+  --el-fill-color-light: #f2f7f8;
+  --el-fill-color-lighter: #f7fafc;
+  --el-bg-color-page: #f7fafc;
   --el-bg-color: #ffffff;
-  --el-box-shadow-light: 0 4px 12px rgba(28, 25, 23, 0.06);
-  --el-box-shadow: 0 12px 32px rgba(28, 25, 23, 0.1);
+  --el-box-shadow-light: 0 6px 18px rgba(0, 59, 130, 0.09);
+  --el-box-shadow: 0 16px 36px rgba(0, 59, 130, 0.12);
 
   font-family:
     system-ui,
@@ -112,6 +115,8 @@ textarea {
 
 .page-title {
   margin: 0;
+  padding-left: 12px;
+  border-left: 4px solid var(--lc-brand-aqua);
   color: var(--lc-text);
   font-size: 24px;
   font-weight: 650;

@@ -10,19 +10,22 @@
  *   export function getInvitationForBid(id: number): Promise<InvitationForBid>
  *   export function updateInvitationForBid(id: number, data: UpdateRequest): Promise<Diff<InvitationForBid>>
  *   export function updateInvitationForBidStatus(id, status, remark?): Promise<InvitationForBid>
+ *   export function deleteInvitationForBid(id): Promise<void>
  *
- * 关系:5 个函数一对一映射 BE InvitationForBidController 的 5 个端点:
+ * 关系:6 个函数一对一映射 BE InvitationForBidController 的公告端点:
  *   createInvitationForBid        ↔ POST   /invitation-for-bid/add
  *   listInvitationForBids         ↔ GET    /invitation-for-bid
  *   getInvitationForBid           ↔ GET    /invitation-for-bid/{id}
  *   updateInvitationForBid        ↔ PATCH  /invitation-for-bid/{id}
  *   updateInvitationForBidStatus  ↔ POST   /invitation-for-bid/status-update
+ *   deleteInvitationForBid        ↔ DELETE /invitation-for-bid/{id}
  *
  * 调用方(view):
  *   - bid-inviter/InvitationForBid/List.vue → listInvitationForBids
  *   - bid-inviter/InvitationForBid/Create.vue → createInvitationForBid
  *   - bid-inviter/InvitationForBid/Edit.vue → getInvitationForBid + updateInvitationForBid
  *   - List.vue (操作列) → updateInvitationForBidStatus
+ *   - List.vue (操作列) → deleteInvitationForBid
  *   - supplier/InvitationList.vue → listInvitationForBids (跨角色复用)
  *   - supplier/BidRecordCreate.vue → getInvitationForBid (跨模块)
  */
@@ -105,4 +108,16 @@ export function updateInvitationForBidStatus(
             remark,
         })
         .then((resp) => resp.data.data)
+}
+
+/**
+ * DELETE /invitation-for-bid/{id} 删除没有关联投标记录的公告。
+ *
+ * 后端会在同一事务写入 invitation_for_bid_operation_history 的 DELETE 快照；
+ * 若公告仍有关联投标记录，则由后端拒绝删除并返回业务错误。
+ */
+export function deleteInvitationForBid(id: number): Promise<void> {
+    return http
+        .delete<Result<void>>(`/invitation-for-bid/${id}`)
+        .then(() => undefined)
 }

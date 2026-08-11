@@ -3,13 +3,13 @@
  * 招标经办人分页列表。
  *
  * usePagedList 统一维护分页、加载和错误状态，当前页按 bid_handler_id 倒序；
- * 前端固定 pageSize=10，覆盖后端默认值 3。页面只负责五列业务字段的展示。
+ * 前端固定 pageSize=10，覆盖后端默认值 3。页面提供详情、编辑和受关联公告保护的删除。
  */
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { CaretBottom, CaretTop, Plus } from '@element-plus/icons-vue'
-import { listBidHandlers } from '@/api/bid-handler-info'
+import { deleteBidHandlerInfo, listBidHandlers } from '@/api/bid-handler-info'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
@@ -36,6 +36,7 @@ const { rows, total, currentPage, pageSize, loading, load } = usePagedList<BidHa
 // ——— 行详情弹窗 ———
 const detailVisible = ref(false)
 const detailRow = ref<BidHandlerInfo | null>(null)
+const deletingId = ref<number | null>(null)
 
 function openDetail(row: BidHandlerInfo) {
   detailRow.value = row
@@ -45,6 +46,44 @@ function openDetail(row: BidHandlerInfo) {
 // ——— 新建经办人:从列表底部进入创建页 ———
 function goCreate() {
   router.push('/bid-inviter/bid-handler-info/create')
+}
+
+function onEdit(row: BidHandlerInfo) {
+  router.push(`/bid-inviter/bid-handler-info/edit/${row.bidHandlerId}`)
+}
+
+/**
+ * 后端会拒绝删除仍被招标公告引用的经办人，并在成功删除时写入 DELETE 操作历史。
+ * 删除当前页最后一项时回退一页，避免停留在空页。
+ */
+async function onDelete(row: BidHandlerInfo) {
+  try {
+    await ElMessageBox.confirm(
+        `确定删除招标经办人“${row.handlerName}”吗？删除后不可恢复。`,
+        '删除招标经办人',
+        {
+          type: 'warning',
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+        },
+    )
+  } catch {
+    return
+  }
+
+  deletingId.value = row.bidHandlerId
+  try {
+    await deleteBidHandlerInfo(row.bidHandlerId)
+    ElMessage.success('删除成功')
+    const targetPage = rows.value.length === 1 && currentPage.value > 1
+        ? currentPage.value - 1
+        : currentPage.value
+    await load(targetPage)
+  } catch (e) {
+    ElMessage.error(getErrorMessage(e))
+  } finally {
+    deletingId.value = null
+  }
 }
 
 function detailFields(row: BidHandlerInfo): DetailField[] {
@@ -98,6 +137,28 @@ onMounted(() => {
       <el-table-column prop="companyName" label="所属公司" min-width="180" show-overflow-tooltip />
       <el-table-column prop="departmentName" label="所属部门" min-width="160" show-overflow-tooltip />
       <el-table-column prop="targetEmail" label="通知邮箱" min-width="220" show-overflow-tooltip />
+      <el-table-column label="操作" width="180" fixed="right">
+        <template #default="{ row }: { row: BidHandlerInfo }">
+          <el-button
+              size="small"
+              type="primary"
+              :disabled="deletingId !== null"
+              @click.stop="onEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button
+              size="small"
+              type="danger"
+              plain
+              :loading="deletingId === row.bidHandlerId"
+              :disabled="deletingId !== null && deletingId !== row.bidHandlerId"
+              @click.stop="onDelete(row)"
+          >
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <div class="page-pagination">
