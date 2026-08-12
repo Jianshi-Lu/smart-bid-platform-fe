@@ -1,12 +1,38 @@
 import { defineConfig } from 'vite'
+import type { Connect, Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import {fileURLToPath} from "node:url";
+
+const healthHandler: Connect.NextHandleFunction = (request, response, next) => {
+  const pathname = request.url?.split('?', 1)[0]
+  if (pathname !== '/health') {
+    next()
+    return
+  }
+
+  response.statusCode = 200
+  response.setHeader('Content-Type', 'application/json; charset=utf-8')
+  response.setHeader('Cache-Control', 'no-store')
+  response.end(JSON.stringify({ status: 'ok' }))
+}
+
+function healthEndpointPlugin(): Plugin {
+  return {
+    name: 'frontend-health-endpoint',
+    configureServer(server) {
+      server.middlewares.use(healthHandler)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(healthHandler)
+    }
+  }
+}
 
 // https://vite.dev/config/
 // @ 别名:让 import '@/api/...' 解析到 src/ 下,避免冗长的相对路径
 // 代理:把业务 API 前缀转发到 BE 8080,绕过浏览器 CORS 限制
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), healthEndpointPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
