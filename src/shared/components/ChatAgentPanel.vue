@@ -36,6 +36,7 @@ import {
     saveBlobFile,
     type FileDownloadKind,
 } from '@/shared/utils/download'
+import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
 const question = ref('')
@@ -544,7 +545,7 @@ function startSidebarResize(event: MouseEvent) {
 
 function renderMarkdown(content: string | null): string {
     if (!content) return ''
-    return marked.parse(content, { async: false }) as string
+    return DOMPurify.sanitize(marked.parse(content, { async: false }) as string)
 }
 
 function onQuestionKeydown(event: KeyboardEvent) {
