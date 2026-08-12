@@ -41,8 +41,14 @@ export function subscribeToSse(
                 },
                 signal: controller.signal,
             })
-            if (!response.ok || !response.body) {
+            // SSE 规范用 204 明确要求客户端停止重连。
+            if (response.status === 204) return
+            if (!response.ok) {
+                if (!isRetryableSseStatus(response.status)) return
                 throw new Error(`SSE 连接失败: HTTP ${response.status}`)
+            }
+            if (!response.body) {
+                throw new Error('SSE 连接失败: 响应体为空')
             }
 
             const reader = response.body.getReader()
@@ -93,6 +99,14 @@ export function subscribeToSse(
         controller?.abort()
         controller = null
     }
+}
+
+/** 仅对临时性 HTTP 故障重连；永久 4xx 不得形成无限请求循环。 */
+export function isRetryableSseStatus(status: number): boolean {
+    return status === 408
+        || status === 425
+        || status === 429
+        || status >= 500
 }
 
 function getAuthorization(url: string): string | null {
