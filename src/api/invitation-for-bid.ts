@@ -11,14 +11,18 @@
  *   export function updateInvitationForBid(id: number, data: UpdateRequest): Promise<Diff<InvitationForBid>>
  *   export function updateInvitationForBidStatus(id, status, remark?): Promise<InvitationForBid>
  *   export function deleteInvitationForBid(id): Promise<void>
+ *   export function listBidderInvitationForBids(query): Promise<PageResult<InvitationForBid>>
+ *   export function getBidderInvitationForBid(id): Promise<InvitationForBid>
  *
- * 关系:6 个函数一对一映射 BE InvitationForBidController 的公告端点:
+ * 关系:8 个函数映射招标方管理端点和投标方只读公告边界:
  *   createInvitationForBid        ↔ POST   /invitation-for-bid/add
  *   listInvitationForBids         ↔ GET    /invitation-for-bid
  *   getInvitationForBid           ↔ GET    /invitation-for-bid/{id}
  *   updateInvitationForBid        ↔ PATCH  /invitation-for-bid/{id}
  *   updateInvitationForBidStatus  ↔ POST   /invitation-for-bid/status-update
  *   deleteInvitationForBid        ↔ DELETE /invitation-for-bid/{id}
+ *   listBidderInvitationForBids   ↔ GET    /bidder/invitations
+ *   getBidderInvitationForBid     ↔ GET    /bidder/invitations/{id}
  *
  * 调用方(view):
  *   - bid-inviter/InvitationForBid/List.vue → listInvitationForBids
@@ -26,8 +30,8 @@
  *   - bid-inviter/InvitationForBid/Edit.vue → getInvitationForBid + updateInvitationForBid
  *   - List.vue (操作列) → updateInvitationForBidStatus
  *   - List.vue (操作列) → deleteInvitationForBid
- *   - supplier/InvitationList.vue → listInvitationForBids (跨角色复用)
- *   - supplier/BidRecordCreate.vue → getInvitationForBid (跨模块)
+ *   - supplier/InvitationList.vue → listBidderInvitationForBids
+ *   - supplier/BidRecordCreate.vue → getBidderInvitationForBid
  */
 import { http } from '@/api/http'
 
@@ -59,6 +63,18 @@ export function listInvitationForBids(
         .then((resp) => resp.data.data)
 }
 
+/** GET /bidder/invitations：投标方登录后浏览公告列表。 */
+export function listBidderInvitationForBids(
+    query: ListRequest = {}
+): Promise<PageResult<InvitationForBid>> {
+    return http
+        .get<Result<PageResult<InvitationForBid>>>(
+            '/bidder/invitations',
+            { params: query }
+        )
+        .then((resp) => resp.data.data)
+}
+
 /**
  * GET /invitation-for-bid/{id} 按 ID 查询单条公告。
  *
@@ -69,6 +85,13 @@ export function listInvitationForBids(
 export function getInvitationForBid(id: number): Promise<InvitationForBid> {
     return http
         .get<Result<InvitationForBid>>(`/invitation-for-bid/${id}`)
+        .then((resp) => resp.data.data)
+}
+
+/** GET /bidder/invitations/{id}：投标方登录后查看待投公告。 */
+export function getBidderInvitationForBid(id: number): Promise<InvitationForBid> {
+    return http
+        .get<Result<InvitationForBid>>(`/bidder/invitations/${id}`)
         .then((resp) => resp.data.data)
 }
 

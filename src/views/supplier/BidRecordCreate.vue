@@ -11,7 +11,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getInvitationForBid } from '@/api/invitation-for-bid'
+import { getBidderInvitationForBid } from '@/api/invitation-for-bid'
 import { createBidderBidRecord } from '@/api/bidder-bid-record'
 import AmountInput from '@/shared/components/AmountInput.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
@@ -73,7 +73,7 @@ onMounted(async () => {
   form.invitationId = invitationId.value
   loadingInvitation.value = true
   try {
-    selectedInvitation.value = await getInvitationForBid(invitationId.value)
+    selectedInvitation.value = await getBidderInvitationForBid(invitationId.value)
   } catch (e) {
     const msg = getErrorMessage(e)
     ElMessage.error(`加载邀请详情失败: ${msg}`)

@@ -9,7 +9,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { CaretBottom, CaretTop, QuestionFilled } from '@element-plus/icons-vue'
-import { listInvitationForBids } from '@/api/invitation-for-bid'
+import { listBidderInvitationForBids } from '@/api/invitation-for-bid'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import DetailDialog, { type DetailField } from '@/shared/components/DetailDialog.vue'
 import { usePagedList } from '@/shared/composables/usePagedList'
@@ -37,7 +37,7 @@ function toggleSort() {
 }
 
 const { rows, total, currentPage, pageSize, loading, load } = usePagedList<InvitationForBid>({
-  fetchPage: listInvitationForBids,
+  fetchPage: listBidderInvitationForBids,
   sort: () => `invitation_id ${sortDirection.value}`,
   onError: (error) => ElMessage.error(getErrorMessage(error)),
 })
