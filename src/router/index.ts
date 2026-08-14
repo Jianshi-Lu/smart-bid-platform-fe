@@ -290,7 +290,7 @@ router.beforeEach((to) => {
     }
     if (to.path === '/supplier/login'
         && localStorage.getItem('bidderCredentials')) {
-        return { path: '/supplier/my-bids' }
+        return { path: '/supplier' }
     }
     if (to.path === '/bid-inviter/login'
         && localStorage.getItem('bidInviterCredentials')) {

@@ -2,7 +2,7 @@
 /**
  * 投标方登录/注册页(/supplier/login)。
  *
- * 登录成功后保存会话并跳转 redirect 参数指定的页面（默认"我的投标"）。
+ * 登录成功后保存会话并跳转 redirect 参数指定的页面（默认投标方首页）。
  * 注册采用最小身份模型：用户名 + 密码，手机号/显示名称可选。
  */
 import { reactive, ref } from 'vue'
@@ -40,7 +40,7 @@ function resolveRedirect(): string {
     const redirect = route.query.redirect
     return typeof redirect === 'string' && redirect.startsWith('/supplier')
         ? redirect
-        : '/supplier/my-bids'
+        : '/supplier'
 }
 
 async function onSubmit() {
