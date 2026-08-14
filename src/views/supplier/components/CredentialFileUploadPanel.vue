@@ -232,7 +232,7 @@ async function downloadFile(
             :download-api="downloadFile"
             :downloadable-checker="isDownloadable"
             dropzone-title="点击选择资信材料"
-            dropzone-hint="支持多个文件；选择后点击统一上传"
+            dropzone-hint="支持多个文件"
             :confirm-delete-text="() => '确定删除该资信文件吗？删除后无法恢复。'"
             empty-text="还没有上传的资信材料"
         />
